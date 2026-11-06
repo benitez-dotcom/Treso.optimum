@@ -183,3 +183,7 @@
 .inbox-empty p {
   margin: 0;
 }
+
+.inbox-list.read-only {
+  opacity: 0.7;
+}

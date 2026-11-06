@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Dropdown, Input, Tooltip } from 'antd';
 import {
   AppstoreOutlined,
@@ -17,6 +17,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { useStore, type ThemePref } from '../store/useStore';
+import { useSession } from '../api/session';
 import { useInbox } from '../store/selectors';
 import { DecisionDot, Logo } from './Brand';
 import './layout.css';
@@ -32,13 +33,31 @@ const titles: Record<string, string> = {
   '/': 'Accueil',
   '/a-traiter': 'À traiter',
   '/plan': 'Plan de trésorerie',
+  '/parametres': 'Paramètres',
+  '/societes': 'Mes sociétés',
+};
+
+const planLabels: Record<string, string> = {
+  DISCOVERY: 'Découverte',
+  ESSENTIAL: 'Essentiel',
+  PERFORMANCE: 'Performance',
+  GROUP: 'Groupe',
+  FIRM: 'Cabinet',
+  DEMO: 'Démonstration',
 };
 
 export function AppLayout() {
   const companyName = useStore((s) => s.companyName);
   const theme = useStore((s) => s.theme);
   const setTheme = useStore((s) => s.setTheme);
-  const resetDemo = useStore((s) => s.resetDemo);
+  const company = useStore((s) => s.company);
+  const clearStore = useStore((s) => s.clear);
+  const me = useSession((s) => s.me);
+  const switchCompany = useSession((s) => s.switchCompany);
+  const logout = useSession((s) => s.logout);
+  const navigate = useNavigate();
+  const myRole = me?.companies.find((c) => c.id === me.activeCompanyId)?.roleLabel ?? '';
+  const initials = `${me?.firstName?.[0] ?? ''}${me?.lastName?.[0] ?? ''}`.toUpperCase() || '·';
   const commitments = useStore((s) => s.commitments);
   const today = useStore((s) => s.today);
   const inbox = useInbox();
@@ -109,13 +128,33 @@ export function AppLayout() {
           <Logo />
         </NavLink>
 
-        <button className="company-switch" type="button">
-          <span>
-            <strong>{companyName}</strong>
-            <span className="company-plan">Offre Performance · démonstration</span>
-          </span>
-          <AppstoreOutlined aria-hidden="true" />
-        </button>
+        <Dropdown
+          trigger={['click']}
+          menu={{
+            items: [
+              ...(me?.companies ?? []).map((c) => ({ key: c.id, label: `${c.id === me?.activeCompanyId ? '✓ ' : ''}${c.name}` })),
+              { type: 'divider' as const },
+              { key: '__all', label: 'Toutes mes sociétés' },
+              { key: '__new', label: 'Ajouter une société' },
+            ],
+            onClick: async ({ key }) => {
+              if (key === '__all') return navigate('/societes');
+              if (key === '__new') return navigate('/bienvenue');
+              if (key === me?.activeCompanyId) return;
+              clearStore();
+              await switchCompany(key);
+              navigate('/');
+            },
+          }}
+        >
+          <button className="company-switch" type="button" aria-label="Changer de société">
+            <span>
+              <strong>{companyName}</strong>
+              <span className="company-plan">{company?.isDemo ? 'Données de démonstration' : `Offre ${planLabels[company?.plan ?? ''] ?? company?.plan ?? ''}`}</span>
+            </span>
+            <AppstoreOutlined aria-hidden="true" />
+          </button>
+        </Dropdown>
 
         <div className="nav-groups">
           {sections.map((section, i) => (
@@ -147,18 +186,28 @@ export function AppLayout() {
             trigger={['click']}
             menu={{
               items: [
+                { key: 'profile', label: 'Mon profil' },
+                { type: 'divider' as const },
                 ...themeItems.map((t) => ({ key: t.key, label: `${t.key === theme ? '✓ ' : ''}${t.label}` })),
                 { type: 'divider' as const },
-                { key: 'reset', label: 'Réinitialiser les données de démonstration' },
+                { key: 'logout', label: 'Se déconnecter' },
               ],
-              onClick: ({ key }) => (key === 'reset' ? resetDemo() : setTheme(key as ThemePref)),
+              onClick: async ({ key }) => {
+                if (key === 'profile') return navigate('/parametres?onglet=profil');
+                if (key === 'logout') {
+                  await logout();
+                  clearStore();
+                  return navigate('/connexion');
+                }
+                setTheme(key as ThemePref);
+              },
             }}
           >
             <button type="button" className="profile">
-              <span className="avatar">JB</span>
+              <span className="avatar">{initials}</span>
               <span className="profile-text">
-                <strong>Jérôme</strong>
-                <span>Propriétaire</span>
+                <strong>{me?.firstName}</strong>
+                <span>{myRole}</span>
               </span>
             </button>
           </Dropdown>

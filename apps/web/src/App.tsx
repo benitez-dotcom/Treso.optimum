@@ -1,24 +1,58 @@
 import { useEffect, useState } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
 import { App as AntApp, ConfigProvider } from 'antd';
 import frFR from 'antd/locale/fr_FR';
 import { antdTheme } from './theme/antdTheme';
-import { useStore } from './store/useStore';
+import { setErrorNotifier, useStore } from './store/useStore';
+import { useSession } from './api/session';
 import { AppLayout } from './layout/AppLayout';
 import { HomePage } from './pages/HomePage';
 import { PlanPage } from './pages/PlanPage';
 import { InboxPage } from './pages/InboxPage';
 import { ComingSoon } from './pages/ComingSoon';
+import { SettingsPage } from './pages/SettingsPage';
+import { CompaniesPage } from './pages/CompaniesPage';
+import { GuestOnly, RequireAuth, RequireCompany } from './auth/Guards';
+import { ForgotPasswordPage, InvitationPage, LoginPage, MagicLinkPage, ResetPasswordPage, SignupPage, VerifyEmailPage } from './auth/AuthPages';
+import { OnboardingPage } from './auth/OnboardingPage';
+
+/** Relie les erreurs de synchronisation du store aux messages Ant Design. */
+function ErrorBridge() {
+  const { message } = AntApp.useApp();
+  useEffect(() => setErrorNotifier((m) => message.error(m)), [message]);
+  return <Outlet />;
+}
 
 const router = createBrowserRouter([
   {
-    path: '/',
-    element: <AppLayout />,
+    element: <ErrorBridge />,
     children: [
-      { index: true, element: <HomePage /> },
-      { path: 'a-traiter', element: <InboxPage /> },
-      { path: 'plan', element: <PlanPage /> },
-      { path: '*', element: <ComingSoon /> },
+      { path: '/connexion', element: <GuestOnly><LoginPage /></GuestOnly> },
+      { path: '/connexion/lien', element: <MagicLinkPage /> },
+      { path: '/inscription', element: <GuestOnly><SignupPage /></GuestOnly> },
+      { path: '/verification-email', element: <VerifyEmailPage /> },
+      { path: '/mot-de-passe-oublie', element: <GuestOnly><ForgotPasswordPage /></GuestOnly> },
+      { path: '/reinitialiser', element: <ResetPasswordPage /> },
+      { path: '/invitation', element: <InvitationPage /> },
+      { path: '/bienvenue', element: <RequireAuth><OnboardingPage /></RequireAuth> },
+      {
+        path: '/',
+        element: (
+          <RequireAuth>
+            <RequireCompany>
+              <AppLayout />
+            </RequireCompany>
+          </RequireAuth>
+        ),
+        children: [
+          { index: true, element: <HomePage /> },
+          { path: 'a-traiter', element: <InboxPage /> },
+          { path: 'plan', element: <PlanPage /> },
+          { path: 'parametres', element: <SettingsPage /> },
+          { path: 'societes', element: <CompaniesPage /> },
+          { path: '*', element: <ComingSoon /> },
+        ],
+      },
     ],
   },
 ]);
@@ -41,6 +75,15 @@ function useDarkMode(): boolean {
 
 export function App() {
   const dark = useDarkMode();
+  const init = useSession((s) => s.init);
+  const meTheme = useSession((s) => s.me?.theme);
+  useEffect(() => {
+    void init();
+  }, [init]);
+  // Le thème enregistré dans le profil suit l'utilisateur d'un appareil à l'autre
+  useEffect(() => {
+    if (meTheme) useStore.setState({ theme: meTheme });
+  }, [meTheme]);
   return (
     <ConfigProvider locale={frFR} theme={antdTheme(dark)}>
       <AntApp>

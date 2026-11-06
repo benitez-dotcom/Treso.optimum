@@ -22,6 +22,7 @@ import {
   type ScenarioPlan,
 } from '@optimum/treso-engine';
 import { useStore } from '../store/useStore';
+import { canEditScenarios, canWrite } from '../api/types';
 import { flattenTree, useCurrentBalance, useCurrentMonth, useIndicatorExprs, usePlan } from '../store/selectors';
 import { ChartLegend, TrajectoryChart } from '../components/TrajectoryChart';
 import { DecisionDot } from '../layout/Brand';
@@ -129,6 +130,9 @@ export function PlanPage() {
   const plan = usePlan(from, count);
   const indicators = useIndicatorExprs();
   const scenario = scenarios.find((s) => s.id === scenarioId) ?? scenarios[0]!;
+  // Contributeurs : tout ; conseillers : scénarios alternatifs seulement ; lecteurs : rien
+  const mayEdit = scenario.isBase ? canWrite(store.role) : canEditScenarios(store.role);
+  const mayCreateScenario = canEditScenarios(store.role);
   const sp: ScenarioPlan = plan.scenarios[scenario.id]!;
   const months = plan.months;
   const isPast = (m: MonthKey) => m < current;
@@ -191,7 +195,7 @@ export function PlanPage() {
         </th>
         {months.map((m) => {
           const cell = cells[m]!;
-          const canEdit = editing && cell.editable && (m >= current || editPast);
+          const canEdit = editing && mayEdit && cell.editable && (m >= current || editPast);
           if (canEdit) {
             return (
               <td key={m} className={`${cellClass(m)} editing`}>
@@ -298,9 +302,11 @@ export function PlanPage() {
               {s.name}
             </button>
           ))}
-          <button type="button" className="scenario-add" onClick={() => setScenarioModal(true)}>
-            <PlusOutlined /> Scénario
-          </button>
+          {mayCreateScenario && (
+            <button type="button" className="scenario-add" onClick={() => setScenarioModal(true)}>
+              <PlusOutlined /> Scénario
+            </button>
+          )}
         </div>
         <Segmented<Range>
           value={range}
@@ -328,14 +334,18 @@ export function PlanPage() {
             <Switch size="small" checked={editPast} onChange={setEditPast} /> Inclure les mois passés
           </label>
         )}
-        <Button
-          type="primary"
-          className={editing ? 'cta-orange' : undefined}
-          icon={<EditOutlined />}
-          onClick={() => setEditing((e) => !e)}
-        >
-          {editing ? 'Terminer' : 'Modifier les budgets'}
-        </Button>
+        {mayEdit ? (
+          <Button
+            type="primary"
+            className={editing ? 'cta-orange' : undefined}
+            icon={<EditOutlined />}
+            onClick={() => setEditing((e) => !e)}
+          >
+            {editing ? 'Terminer' : 'Modifier les budgets'}
+          </Button>
+        ) : (
+          <span className="muted">Consultation seule</span>
+        )}
       </div>
 
       <section className="card plan-chart">
@@ -468,7 +478,7 @@ export function PlanPage() {
               <dt>Engagé</dt><dd className="num">{formatEuro(detailCell.committed)}</dd>
               <dt>Budget</dt>
               <dd>
-                {detailCell.editable ? (
+                {detailCell.editable && mayEdit ? (
                   <InputNumber
                     key={`${detail.rowId}-${detail.month}-${scenario.id}`}
                     min={0}
@@ -546,12 +556,16 @@ export function PlanPage() {
           form={form}
           layout="vertical"
           initialValues={{ color: scenarioColors[0]!.value, start: 'base' }}
-          onFinish={(v: { name: string; color: string; start: string }) => {
-            const id = store.addScenario(v.name.trim(), v.color, v.start === 'base' ? undefined : v.start);
-            setScenarioId(id);
-            setScenarioModal(false);
-            setEditing(true);
-            message.success(`Scénario « ${v.name.trim()} » créé. Modifiez les valeurs qui changent.`);
+          onFinish={async (v: { name: string; color: string; start: string }) => {
+            try {
+              const id = await store.addScenario(v.name.trim(), v.color, v.start === 'base' ? undefined : v.start);
+              setScenarioId(id);
+              setScenarioModal(false);
+              setEditing(true);
+              message.success(`Scénario « ${v.name.trim()} » créé. Modifiez les valeurs qui changent.`);
+            } catch (e) {
+              message.error(e instanceof Error ? e.message : 'Le scénario n\'a pas pu être créé.');
+            }
           }}
         >
           <Form.Item name="name" label="Nom" rules={[{ required: true, message: 'Donnez un nom à votre scénario.' }]}>

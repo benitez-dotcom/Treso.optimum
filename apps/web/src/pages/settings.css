@@ -1,0 +1,83 @@
+.settings-section {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.inline-row > .ant-form-item {
+  flex: 1 1 220px;
+}
+
+.danger-zone {
+  border-top: 1px solid var(--opt-border);
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.danger-zone h3 {
+  font-size: 16px;
+}
+
+.danger-zone p {
+  margin: 0;
+}
+
+.invite-form {
+  row-gap: 12px;
+}
+
+.role-help {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--opt-text-muted);
+}
+
+.dev-link {
+  font-size: 13px;
+  background: var(--opt-petrol-50);
+  border-radius: 8px;
+  padding: 10px 12px;
+  word-break: break-all;
+  margin: 0;
+}
+
+.companies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.company-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  text-align: left;
+  font: inherit;
+  color: var(--opt-text);
+  cursor: pointer;
+}
+
+.company-card strong {
+  font-family: var(--opt-font-title);
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.company-card.active {
+  border: 2px solid var(--opt-petrol);
+  padding: 19px 23px;
+}

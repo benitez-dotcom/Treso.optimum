@@ -11,6 +11,7 @@ import {
   formatMonthShort,
 } from '@optimum/treso-engine';
 import { useStore } from '../store/useStore';
+import { useSession } from '../api/session';
 import { useCurrentBalance, useCurrentMonth, useInbox, usePlan } from '../store/selectors';
 import { ChartLegend, TrajectoryChart } from '../components/TrajectoryChart';
 import { DecisionDot, MotifStrip } from '../layout/Brand';
@@ -18,6 +19,7 @@ import './home.css';
 
 export function HomePage() {
   const { message } = App.useApp();
+  const firstName = useSession((s) => s.me?.firstName ?? '');
   const today = useStore((s) => s.today);
   const transactions = useStore((s) => s.transactions);
   const commitments = useStore((s) => s.commitments);
@@ -83,7 +85,7 @@ export function HomePage() {
     <>
       <section aria-label="Synthèse" className="home-hero">
         <p className="home-sentence">
-          Bonjour Jérôme. Votre trésorerie est de <strong>{formatEuroRounded(balance)}</strong> et devrait atteindre{' '}
+          Bonjour {firstName}. Votre trésorerie est de <strong>{formatEuroRounded(balance)}</strong> et devrait atteindre{' '}
           <strong>{formatEuroRounded(projected)}</strong> fin {formatMonthName(nextMonth)}.
         </p>
         {breach && (

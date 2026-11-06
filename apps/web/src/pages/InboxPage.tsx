@@ -4,6 +4,8 @@ import { App, Button, Progress, Segmented, Select } from 'antd';
 import { CheckOutlined, LinkOutlined } from '@ant-design/icons';
 import { formatDate, formatEuro, formatEuroRounded, normalizeLabel } from '@optimum/treso-engine';
 import { useStore } from '../store/useStore';
+import { canWrite } from '../api/types';
+import { Alert } from 'antd';
 import { useCategoryOptions, useInbox, type InboxItem } from '../store/selectors';
 import { MotifStrip } from '../layout/Brand';
 import './inbox.css';
@@ -212,6 +214,8 @@ function OverdueCard({ item, active, onFocus }: { item: Extract<InboxItem, { kin
 
 export function InboxPage() {
   const items = useInbox();
+  const role = useStore((s) => s.role);
+  const readOnly = !canWrite(role);
   const [filter, setFilter] = useState<Filter>('all');
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
@@ -262,6 +266,7 @@ export function InboxPage() {
         Raccourcis : <kbd className="kbd">↑</kbd> <kbd className="kbd">↓</kbd> naviguer · <kbd className="kbd">Entrée</kbd> valider · <kbd className="kbd">C</kbd> changer la catégorie · <kbd className="kbd">X</kbd> exclure des totaux
       </p>
 
+      {readOnly && <Alert type="info" showIcon message="Votre rôle permet de consulter ces éléments, pas de les traiter. Un contributeur ou un administrateur s'en charge." />}
       {visible.length === 0 ? (
         <section className="card inbox-empty">
           <MotifStrip height={64} />
@@ -272,7 +277,7 @@ export function InboxPage() {
           </div>
         </section>
       ) : (
-        <div className="inbox-list">
+        <div className={`inbox-list${readOnly ? ' read-only' : ''}`} inert={readOnly || undefined}>
           {visible.map((item, i) => {
             const isActive = i === active;
             const focus = () => setActiveIndex(i);

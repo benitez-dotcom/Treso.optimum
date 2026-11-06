@@ -1,0 +1,275 @@
+import { randomUUID } from 'node:crypto';
+import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
+import type { Budget, Category, Commitment, Rule, Scenario, Transaction } from '@optimum/treso-engine';
+import { audit, loadCompany, requireRole, tenant, WRITERS, type Role } from '../context';
+import { badRequest, forbidden, notFound } from '../errors';
+import { companyDto, type CompanyRow } from './account';
+
+const monthKey = z.string().regex(/^\d{4}-\d{2}-01$/, 'Mois invalide (format AAAA-MM-01).');
+const amount = z.number().min(0, 'Un budget ne peut pas être négatif.').max(1e10).nullable();
+
+/** Les conseillers peuvent modifier les scénarios alternatifs, pas le scénario de base. */
+const SCENARIO_WRITERS: Role[] = [...WRITERS, 'ADVISOR'];
+
+type Row = Record<string, unknown>;
+
+const toCategory = (r: Row): Category => ({
+  id: r.id as string,
+  name: r.name as string,
+  flow: r.flow as Category['flow'],
+  parentId: (r.parent_id as string | null) ?? null,
+  position: r.position as number,
+  kind: r.kind as Category['kind'],
+  vatRate: r.vat_rate as number,
+  budgetAtParent: r.budget_at_parent as boolean,
+  isVat: r.is_vat as boolean,
+  isSystem: r.is_system as boolean,
+});
+
+const toTransaction = (r: Row): Transaction => ({
+  id: r.id as string,
+  accountId: r.account_id as string,
+  bookedAt: r.booked_at as string,
+  rawLabel: r.raw_label as string,
+  label: r.label as string,
+  counterparty: (r.counterparty as string | null) ?? undefined,
+  amount: r.amount as number,
+  categoryId: (r.category_id as string | null) ?? null,
+  suggestion: (r.suggestion as Transaction['suggestion']) ?? null,
+  hidden: r.hidden as boolean,
+  note: (r.note as string | null) ?? undefined,
+});
+
+const toCommitment = (r: Row): Commitment => ({
+  id: r.id as string,
+  flow: r.flow as Commitment['flow'],
+  counterparty: r.counterparty as string,
+  number: (r.number as string | null) ?? undefined,
+  label: r.label as string,
+  amountInclTax: r.amount_incl_tax as number,
+  amountPaid: r.amount_paid as number,
+  vatRate: r.vat_rate as number,
+  issuedAt: r.issued_at as string,
+  dueAt: r.due_at as string,
+  status: r.status as Commitment['status'],
+  categoryId: (r.category_id as string | null) ?? null,
+  hidden: r.hidden as boolean,
+  accountId: (r.account_id as string | null) ?? null,
+});
+
+export function registerDataRoutes(app: FastifyInstance) {
+  /** Toutes les données de la société active, pour hydrater l'application. */
+  app.get('/bootstrap', { preHandler: loadCompany }, async (req) => {
+    return tenant(req, async (tx) => {
+      const q = (sql: string) => tx.query<Row>(sql).then((r) => r.rows);
+      const company = (await tx.query<Row>('SELECT * FROM companies WHERE id = $1', [req.company!.id])).rows[0];
+      if (!company) throw notFound();
+      const [accounts, categories, transactions, commitments, scenarios, budgets, rules, indicators] = await Promise.all([
+        q('SELECT * FROM bank_accounts ORDER BY id'),
+        q('SELECT * FROM categories ORDER BY flow, position'),
+        q('SELECT * FROM transactions ORDER BY booked_at, id'),
+        q('SELECT * FROM commitments ORDER BY due_at'),
+        q('SELECT * FROM scenarios ORDER BY is_base DESC, name'),
+        q("SELECT scenario_id, category_id, to_char(month, 'YYYY-MM-DD') AS month, amount FROM budgets"),
+        q('SELECT * FROM rules ORDER BY priority DESC'),
+        q('SELECT * FROM indicators ORDER BY name'),
+      ]);
+      return {
+        company: companyDto(company as unknown as CompanyRow),
+        role: req.company!.role,
+        accounts: accounts.map((a) => ({ id: a.id, name: a.name, bankName: a.bank_name, balance: a.balance, isActive: a.is_active })),
+        categories: categories.map(toCategory),
+        transactions: transactions.map(toTransaction),
+        commitments: commitments.map(toCommitment),
+        scenarios: scenarios.map((s): Scenario => ({ id: s.id as string, name: s.name as string, color: s.color as string, isBase: s.is_base as boolean })),
+        budgets: budgets.map((b): Budget => ({ scenarioId: b.scenario_id as string, categoryId: b.category_id as string, month: b.month as string, amount: b.amount as number })),
+        rules: rules.map((r): Rule => ({ id: r.id as string, conditions: r.conditions as Rule['conditions'], categoryId: r.category_id as string, autoApply: r.auto_apply as boolean, priority: r.priority as number })),
+        indicators: indicators.map((i) => ({ id: i.id, name: i.name, formula: i.formula, unit: i.unit })),
+      };
+    });
+  });
+
+  // ───────── Budgets ─────────
+  app.put('/budgets', { preHandler: loadCompany }, async (req) => {
+    requireRole(req, SCENARIO_WRITERS);
+    const { changes } = z
+      .object({ changes: z.array(z.object({ scenarioId: z.string(), categoryId: z.string(), month: monthKey, amount })).min(1).max(2000) })
+      .parse(req.body);
+    return tenant(req, async (tx) => {
+      const scenarioIds = [...new Set(changes.map((c) => c.scenarioId))];
+      const sc = await tx.query<{ id: string; is_base: boolean }>('SELECT id, is_base FROM scenarios WHERE id = ANY($1)', [scenarioIds]);
+      if (sc.rowCount !== scenarioIds.length) throw notFound('scenario.not_found', 'Scénario introuvable.');
+      if (req.company!.role === 'ADVISOR' && sc.rows.some((s) => s.is_base)) {
+        throw forbidden('scenario.base_locked', 'Les conseillers modifient les scénarios alternatifs, pas le scénario de base.');
+      }
+      for (const c of changes) {
+        if (c.amount === null) {
+          await tx.query('DELETE FROM budgets WHERE company_id = $1 AND scenario_id = $2 AND category_id = $3 AND month = $4', [
+            req.company!.id, c.scenarioId, c.categoryId, c.month,
+          ]);
+        } else {
+          await tx.query(
+            `INSERT INTO budgets (company_id, scenario_id, category_id, month, amount) VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (company_id, scenario_id, category_id, month) DO UPDATE SET amount = excluded.amount`,
+            [req.company!.id, c.scenarioId, c.categoryId, c.month, c.amount],
+          );
+        }
+      }
+      await audit(tx, req, 'update', 'budgets', null, null, { count: changes.length, sample: changes.slice(0, 5) });
+      return { updated: changes.length };
+    });
+  });
+
+  // ───────── Scénarios ─────────
+  app.post('/scenarios', { preHandler: loadCompany }, async (req, reply) => {
+    requireRole(req, SCENARIO_WRITERS);
+    const body = z
+      .object({
+        name: z.string().trim().min(1, 'Donnez un nom à votre scénario.').max(80),
+        color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+        copyFrom: z.string().optional(),
+      })
+      .parse(req.body);
+    const id = `sc-${randomUUID().slice(0, 8)}`;
+    await tenant(req, async (tx) => {
+      await tx.query('INSERT INTO scenarios (company_id, id, name, color, is_base) VALUES ($1, $2, $3, $4, false)', [req.company!.id, id, body.name, body.color]);
+      if (body.copyFrom) {
+        await tx.query(
+          `INSERT INTO budgets (company_id, scenario_id, category_id, month, amount)
+           SELECT company_id, $2, category_id, month, amount FROM budgets WHERE company_id = $1 AND scenario_id = $3`,
+          [req.company!.id, id, body.copyFrom],
+        );
+      }
+      await audit(tx, req, 'create', 'scenario', id, null, body);
+    });
+    return reply.status(201).send({ id, name: body.name, color: body.color, isBase: false });
+  });
+
+  app.delete('/scenarios/:id', { preHandler: loadCompany }, async (req, reply) => {
+    requireRole(req, SCENARIO_WRITERS);
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    await tenant(req, async (tx) => {
+      const s = (await tx.query<{ is_base: boolean; name: string }>('SELECT is_base, name FROM scenarios WHERE id = $1', [id])).rows[0];
+      if (!s) throw notFound('scenario.not_found', 'Scénario introuvable.');
+      if (s.is_base) throw badRequest('scenario.base_locked', 'Le scénario de base ne peut pas être supprimé.');
+      await tx.query('DELETE FROM scenarios WHERE id = $1', [id]);
+      await audit(tx, req, 'delete', 'scenario', id, { name: s.name }, null);
+    });
+    return reply.status(204).send();
+  });
+
+  // ───────── Opérations ─────────
+  app.post('/transactions/batch', { preHandler: loadCompany }, async (req) => {
+    requireRole(req, WRITERS);
+    const { ops } = z
+      .object({
+        ops: z
+          .array(z.object({ id: z.string(), categoryId: z.string().nullable().optional(), hidden: z.boolean().optional(), note: z.string().max(500).optional() }))
+          .min(1)
+          .max(1000),
+      })
+      .parse(req.body);
+    return tenant(req, async (tx) => {
+      let updated = 0;
+      for (const op of ops) {
+        const r = await tx.query(
+          `UPDATE transactions SET
+             category_id = CASE WHEN $3 THEN $2 ELSE category_id END,
+             hidden = coalesce($4, hidden),
+             note = coalesce($5, note),
+             suggestion = CASE WHEN $3 OR $4 IS NOT NULL THEN NULL ELSE suggestion END
+           WHERE id = $1`,
+          [op.id, op.categoryId ?? null, 'categoryId' in op, op.hidden ?? null, op.note ?? null],
+        );
+        updated += r.rowCount ?? 0;
+      }
+      await audit(tx, req, 'update', 'transactions', null, null, { count: ops.length, sample: ops.slice(0, 5) });
+      return { updated };
+    });
+  });
+
+  // ───────── Rapprochements ─────────
+  app.post('/reconciliations', { preHandler: loadCompany }, async (req) => {
+    requireRole(req, WRITERS);
+    const body = z.object({ transactionId: z.string(), commitmentId: z.string() }).parse(req.body);
+    return tenant(req, async (tx) => {
+      const t = (await tx.query<Row>('SELECT * FROM transactions WHERE id = $1', [body.transactionId])).rows[0];
+      const c = (await tx.query<Row>('SELECT * FROM commitments WHERE id = $1', [body.commitmentId])).rows[0];
+      if (!t || !c) throw notFound('reconciliation.not_found', 'Opération ou facture introuvable.');
+      const remaining = (c.amount_incl_tax as number) - (c.amount_paid as number);
+      const paid = Math.min(remaining, Math.abs(t.amount as number));
+      if (Math.abs(t.amount as number) > remaining + 0.005) {
+        throw badRequest('reconciliation.amount_exceeded', 'Le total des factures dépasse le montant de ce paiement.');
+      }
+      const newPaid = (c.amount_paid as number) + paid;
+      const status = newPaid >= (c.amount_incl_tax as number) - 0.005 ? 'paid' : 'pending';
+      await tx.query('UPDATE commitments SET amount_paid = $2, status = $3 WHERE id = $1', [c.id, newPaid, status]);
+      await tx.query('UPDATE transactions SET category_id = coalesce(category_id, $2), suggestion = NULL WHERE id = $1', [t.id, c.category_id]);
+      await audit(tx, req, 'create', 'reconciliation', `${t.id}:${c.id}`, null, { paid, status });
+      return { commitmentId: c.id, amountPaid: newPaid, status };
+    });
+  });
+
+  // ───────── Factures (statut, utilisé par « Annuler ») ─────────
+  app.patch('/commitments/:id', { preHandler: loadCompany }, async (req) => {
+    requireRole(req, WRITERS);
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const body = z.object({ status: z.enum(['pending', 'paid', 'cancelled']), amountPaid: z.number().min(0) }).partial().strict().parse(req.body);
+    return tenant(req, async (tx) => {
+      const before = (await tx.query<Row>('SELECT status, amount_paid FROM commitments WHERE id = $1', [id])).rows[0];
+      if (!before) throw notFound('commitment.not_found', 'Facture introuvable.');
+      await tx.query('UPDATE commitments SET status = coalesce($2, status), amount_paid = coalesce($3, amount_paid) WHERE id = $1', [
+        id, body.status ?? null, body.amountPaid ?? null,
+      ]);
+      await audit(tx, req, 'update', 'commitment', id, before, body);
+      return { ok: true };
+    });
+  });
+
+  // ───────── Règles ─────────
+  app.post('/rules', { preHandler: loadCompany }, async (req, reply) => {
+    requireRole(req, WRITERS);
+    const body = z
+      .object({
+        conditions: z
+          .array(
+            z.union([
+              z.object({ field: z.literal('label'), op: z.enum(['contains', 'startsWith']), value: z.string().min(1).max(120) }),
+              z.object({ field: z.literal('amount'), op: z.literal('between'), min: z.number(), max: z.number() }),
+              z.object({ field: z.literal('account'), op: z.literal('is'), value: z.string() }),
+            ]),
+          )
+          .min(1)
+          .max(5),
+        categoryId: z.string(),
+        autoApply: z.boolean().default(false),
+        priority: z.number().int().min(0).max(100).default(5),
+      })
+      .parse(req.body);
+    const id = `r-${randomUUID().slice(0, 8)}`;
+    await tenant(req, async (tx) => {
+      await tx.query('INSERT INTO rules (company_id, id, conditions, category_id, auto_apply, priority) VALUES ($1, $2, $3, $4, $5, $6)', [
+        req.company!.id, id, JSON.stringify(body.conditions), body.categoryId, body.autoApply, body.priority,
+      ]);
+      await audit(tx, req, 'create', 'rule', id, null, body);
+    });
+    return reply.status(201).send({ id, ...body });
+  });
+
+  // ───────── Journal d'activité ─────────
+  app.get('/audit-logs', { preHandler: loadCompany }, async (req) => {
+    requireRole(req, ['OWNER', 'ADMIN']);
+    const { limit } = z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) }).parse(req.query);
+    return tenant(req, async (tx) => {
+      const rows = (
+        await tx.query<Row>(
+          `SELECT a.id, a.action, a.entity, a.entity_id, a.before, a.after, a.at, u.first_name
+           FROM audit_logs a LEFT JOIN users u ON u.id = a.actor_id ORDER BY a.at DESC, a.id DESC LIMIT $1`,
+          [limit],
+        )
+      ).rows;
+      return rows.map((r) => ({ id: r.id, action: r.action, entity: r.entity, entityId: r.entity_id, before: r.before, after: r.after, at: r.at, actor: r.first_name }));
+    });
+  });
+}
