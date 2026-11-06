@@ -1,0 +1,13 @@
+{
+  "name": "treso-optimum",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tréso Optimum — logiciel de pilotage de trésorerie pour TPE/PME",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "pnpm --filter @optimum/web dev",
+    "build": "pnpm --filter @optimum/treso-engine build && pnpm --filter @optimum/web build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

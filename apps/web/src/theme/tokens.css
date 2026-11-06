@@ -1,0 +1,141 @@
+/* Design system Tréso Optimum — tokens (cahier des charges, section 1). */
+:root {
+  /* Couleurs de marque (charte Optimum) */
+  --opt-petrol: #114c5c;
+  --opt-petrol-700: #0b3642;
+  --opt-petrol-50: #eef3f4;
+  --opt-orange: #e94f1c;
+  --opt-orange-text: #c2410c;
+  --opt-sage: #84adb7;
+  --opt-ink: #303031;
+  --opt-mist: #e5e4e4;
+
+  /* Couleurs fonctionnelles dérivées */
+  --opt-in: #1e7a5a;
+  --opt-in-soft: #a7d3c2;
+  --opt-in-bg: #eef6f2;
+  --opt-out: #b42318;
+  --opt-out-flow: #303031;
+  --opt-out-soft: #c4c4c5;
+  --opt-warning: #b54708;
+  --opt-warning-bg: #fdf3ec;
+  --opt-alt: #8a6fb0;
+
+  /* Surfaces */
+  --opt-surface: #ffffff;
+  --opt-canvas: #f6f6f5;
+  --opt-row-alt: #f1f1f0;
+  --opt-text: #303031;
+  --opt-text-muted: #5c5c5d;
+  --opt-border: #e5e4e4;
+  --opt-on-petrol-muted: rgba(255, 255, 255, 0.75);
+
+  /* Formes */
+  --opt-radius-card: 12px;
+  --opt-radius-control: 8px;
+  --opt-shadow-float: 0 8px 24px rgba(17, 76, 92, 0.14);
+
+  --opt-font-title: 'Poppins', system-ui, sans-serif;
+  --opt-font-text: 'Raleway', system-ui, sans-serif;
+}
+
+:root[data-theme='dark'] {
+  --opt-petrol: #2b8a9f;
+  --opt-petrol-50: #17323a;
+  --opt-orange-text: #f08a5d;
+  --opt-sage: #84adb7;
+  --opt-ink: #f2f2f1;
+  --opt-mist: #2a3a3f;
+  --opt-in: #4cbf93;
+  --opt-in-soft: #2d6b56;
+  --opt-in-bg: #143029;
+  --opt-out: #f97066;
+  --opt-out-flow: #f2f2f1;
+  --opt-out-soft: #5a6366;
+  --opt-warning: #f5a05a;
+  --opt-warning-bg: #3a2516;
+  --opt-alt: #b39ddb;
+  --opt-surface: #14262b;
+  --opt-canvas: #0e1a1e;
+  --opt-row-alt: #182e34;
+  --opt-text: #f2f2f1;
+  --opt-text-muted: #a8b4b7;
+  --opt-border: #2a3a3f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--opt-canvas);
+  color: var(--opt-text);
+  font-family: var(--opt-font-text);
+  font-size: 14px;
+  line-height: 1.55;
+  /* Raleway : forcer les chiffres alignés et tabulaires */
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--opt-font-title);
+  font-weight: 600;
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--opt-orange);
+  outline-offset: 2px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.eyebrow {
+  font-family: var(--opt-font-title);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--opt-text-muted);
+}
+
+.card {
+  background: var(--opt-surface);
+  border: 1px solid var(--opt-border);
+  border-radius: var(--opt-radius-card);
+  padding: 20px 24px;
+  min-width: 0;
+}
+
+.card-title {
+  font-size: 18px;
+  margin: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
