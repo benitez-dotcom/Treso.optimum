@@ -1,4 +1,10 @@
-# Base PostgreSQL de développement : `docker compose up -d`
+# Tréso Optimum en local, en une commande :
+#   docker compose up --build
+# puis ouvrir http://localhost:8080
+#
+# Pour les développeurs : `docker compose up -d db` ne lance que la base,
+# puis `pnpm dev` lance l'API et le front en mode développement.
+
 services:
   db:
     image: postgres:16
@@ -10,5 +16,31 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./apps/api/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d treso"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://treso_app:treso_app@db:5432/treso
+      DATABASE_OWNER_URL: postgres://treso_owner:treso@db:5432/treso
+      APP_DB_ROLE: treso_app
+      # Usage local uniquement : à remplacer par une valeur secrète en production
+      JWT_SECRET: local-only-secret-not-for-production-1234567890
+      APP_URL: http://localhost:8080
+      CORS_ORIGINS: http://localhost:8080
+      # Pas de serveur d'emails en local : les liens s'affichent à l'écran
+      EXPOSE_EMAIL_LINKS: "true"
+      # http://localhost n'est pas en HTTPS
+      COOKIE_SECURE: "false"
+    ports:
+      - "8080:3000"
+
 volumes:
   pgdata:

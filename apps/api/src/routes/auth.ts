@@ -74,7 +74,7 @@ export function registerAuthRoutes(app: FastifyInstance) {
     reply.setCookie(REFRESH_COOKIE, refresh, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: config.env === 'production',
+      secure: config.cookieSecure,
       path: COOKIE_PATH,
       ...(remember ? { maxAge: days * 86_400 } : {}),
     });

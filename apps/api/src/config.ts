@@ -16,6 +16,10 @@ export interface Config {
   refreshTokenTtlDays: number;
   /** Tolérance (ms) avant de traiter la réutilisation d'un refresh token comme un vol. */
   refreshReuseGraceMs: number;
+  /** Dossier du front compilé, servi par l'API (déploiement en un seul service). */
+  webDist: string | null;
+  /** Cookie de session réservé au HTTPS (désactivable pour un usage local en http). */
+  cookieSecure: boolean;
   /** Expose les liens des emails dans les réponses (développement et tests uniquement). */
   exposeEmailLinks: boolean;
 }
@@ -38,7 +42,9 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     accessTokenTtlSeconds: Number(process.env.ACCESS_TOKEN_TTL ?? 900),
     refreshTokenTtlDays: Number(process.env.REFRESH_TOKEN_TTL_DAYS ?? 30),
     refreshReuseGraceMs: 10_000,
-    exposeEmailLinks: env !== 'production',
+    webDist: process.env.WEB_DIST ?? null,
+    cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : env === 'production',
+    exposeEmailLinks: process.env.EXPOSE_EMAIL_LINKS ? process.env.EXPOSE_EMAIL_LINKS === 'true' : env !== 'production',
     ...overrides,
   };
   return config;

@@ -4,12 +4,17 @@ Logiciel de pilotage de trésorerie pour TPE/PME, aux couleurs de la charte Opti
 Le dépôt contient le **lot 0** (design system), le **lot 1** (API, base de données,
 authentification, sociétés et rôles) et les premiers écrans branchés sur l'API.
 
-## Démarrer en local
+## Essayer sans être développeur
+
+Suivez le guide [LANCER-EN-LOCAL.md](LANCER-EN-LOCAL.md) : installer Docker Desktop, puis
+`docker compose up --build` dans le dossier du projet, et ouvrir http://localhost:8080.
+
+## Démarrer en local (développeurs)
 
 Prérequis : Node 22, pnpm 10 et PostgreSQL 16 (ou Docker).
 
 ```bash
-docker compose up -d        # PostgreSQL + rôles treso_owner / treso_app + bases treso et treso_test
+docker compose up -d db     # PostgreSQL + rôles treso_owner / treso_app + bases treso et treso_test
 pnpm install
 cp apps/api/.env.example apps/api/.env   # facultatif : les valeurs par défaut conviennent en local
 pnpm dev                    # API sur :3000 (migrations appliquées au démarrage) + front sur :5173
