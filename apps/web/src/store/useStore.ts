@@ -21,9 +21,8 @@ import {
   type Scenario,
   type Transaction,
 } from '@optimum/treso-engine';
-import type { Indicator } from '@optimum/demo-data';
 import { api, ApiError } from '../api/client';
-import { canAdmin, type Bootstrap, type Company, type CompanySettings, type Role } from '../api/types';
+import { canAdmin, type Bootstrap, type BudgetNote, type Company, type CompanySettings, type Indicator, type Role } from '../api/types';
 
 export type ThemePref = 'light' | 'dark' | 'system';
 
@@ -37,6 +36,7 @@ interface Data {
   budgets: Budget[];
   rules: Rule[];
   indicators: Indicator[];
+  budgetNotes: BudgetNote[];
 }
 
 interface State extends Data {
@@ -56,7 +56,7 @@ interface State extends Data {
   updateSettings: (patch: Partial<CompanySettings> & { name?: string }) => Promise<void>;
   setBudget: (scenarioId: string, categoryId: string, month: MonthKey, amount: number | null) => void;
   repeatBudget: (scenarioId: string, categoryId: string, month: MonthKey, amount: number, every: number, duration: number) => void;
-  addScenario: (name: string, color: string, copyFrom?: string) => Promise<string>;
+  addScenario: (name: string, color: string, copyFrom?: string, description?: string) => Promise<string>;
   removeScenario: (id: string) => void;
   categorize: (ids: string[], categoryId: string) => Transaction[];
   setHidden: (ids: string[], hidden: boolean) => void;
@@ -77,9 +77,22 @@ interface State extends Data {
   reorderRules: (ids: string[]) => Promise<void>;
   applyRule: (id: string) => Promise<number>;
   createRule: (rule: Omit<Rule, 'id'>) => Promise<Rule>;
+
+  // ───── Lot 3 : plan de trésorerie ─────
+  /** Les 20 dernières saisies de budgets, pour « Annuler » (Ctrl/⌘ Z). */
+  budgetHistory: Budget[][];
+  budgetSave: 'idle' | 'saving' | 'saved' | 'error';
+  applyBudgets: (changes: Budget[]) => void;
+  undoBudgets: () => number;
+  updateScenario: (id: string, patch: Partial<Pick<Scenario, 'name' | 'color' | 'description' | 'archived'>>) => Promise<void>;
+  setBudgetNote: (scenarioId: string, categoryId: string, month: MonthKey, note: string | null) => Promise<void>;
+  createIndicator: (input: Omit<Indicator, 'id' | 'position'>) => Promise<Indicator>;
+  updateIndicator: (id: string, patch: Partial<Omit<Indicator, 'id' | 'position'>>) => Promise<void>;
+  deleteIndicator: (id: string) => Promise<void>;
+  reorderIndicators: (ids: string[]) => Promise<void>;
 }
 
-const emptyData: Data = { connections: [], accounts: [], categories: [], transactions: [], commitments: [], scenarios: [], budgets: [], rules: [], indicators: [] };
+const emptyData: Data = { connections: [], accounts: [], categories: [], transactions: [], commitments: [], scenarios: [], budgets: [], rules: [], indicators: [], budgetNotes: [] };
 const defaultSettings: CompanySettings = {
   autoHideRefunds: true,
   autoHideInternalTransfers: true,
@@ -89,6 +102,7 @@ const defaultSettings: CompanySettings = {
   vatEnabled: false,
   vatRegime: 'monthly',
   overdueInPlan: 'current_month',
+  fiscalYearStartMonth: 1,
 };
 
 /** Affichage des erreurs de synchronisation (branché par l'application sur les messages Ant Design). */
@@ -107,6 +121,25 @@ export const useStore = create<State>()(
           void get().load();
         });
       };
+      /** Enregistre des budgets par lots de 2 000 (limite de l'API), avec l'état « Enregistré ». */
+      let inFlight = 0;
+      const pushBudgets = (changes: Budget[]) => {
+        inFlight++;
+        set({ budgetSave: 'saving' });
+        const chunks: Budget[][] = [];
+        for (let i = 0; i < changes.length; i += 2000) chunks.push(changes.slice(i, i + 2000));
+        Promise.all(chunks.map((c) => api('PUT', '/budgets', { changes: c })))
+          .then(() => {
+            inFlight--;
+            if (inFlight === 0) set({ budgetSave: 'saved' });
+          })
+          .catch((err: unknown) => {
+            inFlight--;
+            set({ budgetSave: 'error' });
+            notifyError(err instanceof ApiError ? err.message : "La modification n'a pas pu être enregistrée.");
+            void get().load();
+          });
+      };
       const snapshot = () => {
         const s = get();
         set({ undoSnapshot: { transactions: s.transactions, commitments: s.commitments, budgets: s.budgets } });
@@ -122,6 +155,8 @@ export const useStore = create<State>()(
         settings: defaultSettings,
         theme: 'system',
         undoSnapshot: null,
+        budgetHistory: [],
+        budgetSave: 'idle',
 
         load: async () => {
           const b = await api<Bootstrap>('GET', '/bootstrap');
@@ -141,7 +176,9 @@ export const useStore = create<State>()(
             budgets: b.budgets,
             rules: b.rules,
             indicators: b.indicators,
+            budgetNotes: b.budgetNotes ?? [],
             undoSnapshot: null,
+            budgetHistory: [],
           });
         },
 
@@ -164,21 +201,80 @@ export const useStore = create<State>()(
         },
 
         setBudget: (scenarioId, categoryId, month, amount) => {
-          const s = get();
-          const without = s.budgets.filter((b) => !(b.scenarioId === scenarioId && b.categoryId === categoryId && b.month === month));
-          set({ budgets: amount === null ? without : upsertBudgets(without, [{ scenarioId, categoryId, month, amount }]) });
-          sync(api('PUT', '/budgets', { changes: [{ scenarioId, categoryId, month, amount }] }));
+          get().applyBudgets([{ scenarioId, categoryId, month, amount }]);
         },
 
         repeatBudget: (scenarioId, categoryId, month, amount, every, duration) => {
-          snapshot();
-          const changes = repeatBudget(scenarioId, categoryId, month, amount, every, duration);
-          set((s) => ({ budgets: upsertBudgets(s.budgets, changes) }));
-          sync(api('PUT', '/budgets', { changes }));
+          get().applyBudgets(repeatBudget(scenarioId, categoryId, month, amount, every, duration));
         },
 
-        addScenario: async (name, color, copyFrom) => {
-          const created = await api<Scenario>('POST', '/scenarios', { name, color, copyFrom });
+        applyBudgets: (changes) => {
+          if (changes.length === 0) return;
+          const s = get();
+          const key = (b: Pick<Budget, 'scenarioId' | 'categoryId' | 'month'>) => `${b.scenarioId}|${b.categoryId}|${b.month}`;
+          const current = new Map(s.budgets.map((b) => [key(b), b.amount]));
+          // Dernière valeur par cellule, et valeurs précédentes pour l'annulation
+          const unique = [...new Map(changes.map((c) => [key(c), c])).values()];
+          const previous = unique.map((c) => ({ ...c, amount: current.get(key(c)) ?? null }));
+          set({
+            budgets: upsertBudgets(s.budgets, unique),
+            budgetHistory: [...s.budgetHistory, previous].slice(-20),
+          });
+          pushBudgets(unique);
+        },
+
+        undoBudgets: () => {
+          const s = get();
+          const last = s.budgetHistory[s.budgetHistory.length - 1];
+          if (!last) return 0;
+          set({ budgets: upsertBudgets(s.budgets, last), budgetHistory: s.budgetHistory.slice(0, -1) });
+          pushBudgets(last);
+          return last.length;
+        },
+
+        updateScenario: async (id, patch) => {
+          const before = get().scenarios;
+          set({ scenarios: before.map((x) => (x.id === id ? { ...x, ...patch } : x)) });
+          try {
+            const updated = await api<Scenario>('PATCH', `/scenarios/${encodeURIComponent(id)}`, patch);
+            set((s) => ({ scenarios: s.scenarios.map((x) => (x.id === id ? updated : x)) }));
+          } catch (e) {
+            set({ scenarios: before });
+            throw e;
+          }
+        },
+
+        setBudgetNote: async (scenarioId, categoryId, month, note) => {
+          const text = note?.trim() || null;
+          const others = get().budgetNotes.filter((n) => !(n.scenarioId === scenarioId && n.categoryId === categoryId && n.month === month));
+          set({ budgetNotes: text ? [...others, { scenarioId, categoryId, month, note: text }] : others });
+          sync(api('PUT', '/budget-notes', { scenarioId, categoryId, month, note: text }));
+        },
+
+        createIndicator: async (input) => {
+          const created = await api<Indicator>('POST', '/indicators', input);
+          set((s) => ({ indicators: [...s.indicators, created] }));
+          return created;
+        },
+
+        updateIndicator: async (id, patch) => {
+          const updated = await api<Indicator>('PATCH', `/indicators/${encodeURIComponent(id)}`, patch);
+          set((s) => ({ indicators: s.indicators.map((i) => (i.id === id ? updated : i)) }));
+        },
+
+        deleteIndicator: async (id) => {
+          await api('DELETE', `/indicators/${encodeURIComponent(id)}`);
+          set((s) => ({ indicators: s.indicators.filter((i) => i.id !== id) }));
+        },
+
+        reorderIndicators: async (ids) => {
+          const byId = new Map(get().indicators.map((i) => [i.id, i]));
+          set({ indicators: ids.flatMap((id, i) => (byId.has(id) ? [{ ...byId.get(id)!, position: i + 1 }] : [])) });
+          sync(api('PUT', '/indicators/order', { ids }));
+        },
+
+        addScenario: async (name, color, copyFrom, description) => {
+          const created = await api<Scenario>('POST', '/scenarios', { name, color, copyFrom, description: description || undefined });
           set((s) => ({
             scenarios: [...s.scenarios, created],
             budgets: copyFrom
@@ -189,7 +285,12 @@ export const useStore = create<State>()(
         },
 
         removeScenario: (id) => {
-          set((s) => ({ scenarios: s.scenarios.filter((x) => x.id !== id || x.isBase), budgets: s.budgets.filter((b) => b.scenarioId !== id) }));
+          set((s) => ({
+            scenarios: s.scenarios.filter((x) => x.id !== id || x.isBase),
+            budgets: s.budgets.filter((b) => b.scenarioId !== id),
+            budgetNotes: s.budgetNotes.filter((n) => n.scenarioId !== id),
+            budgetHistory: [],
+          }));
           sync(api('DELETE', `/scenarios/${encodeURIComponent(id)}`));
         },
 

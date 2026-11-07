@@ -33,6 +33,7 @@ const titles: Record<string, string> = {
   '/': 'Accueil',
   '/a-traiter': 'À traiter',
   '/plan': 'Plan de trésorerie',
+  '/indicateurs': 'Indicateurs',
   '/operations': 'Opérations bancaires',
   '/parametres': 'Paramètres',
   '/societes': 'Mes sociétés',

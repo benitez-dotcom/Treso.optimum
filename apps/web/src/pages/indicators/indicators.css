@@ -1,0 +1,150 @@
+/* Indicateurs personnalisés (écran 7.13). */
+.indicators-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.indicators-page .page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.indicators-page .page-head h1 {
+  margin: 0 0 4px;
+}
+
+.indicators-page .page-head p {
+  margin: 0;
+}
+
+.indicators-page .page-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.indicators-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.indicators-card .ant-empty {
+  padding: 40px 16px;
+}
+
+.ind-name {
+  display: flex;
+  flex-direction: column;
+}
+
+.ind-value {
+  font-family: var(--opt-font-title);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.sparkline {
+  width: 140px;
+  height: 36px;
+}
+
+.row-actions {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.template-item {
+  display: flex;
+  flex-direction: column;
+  max-width: 340px;
+  white-space: normal;
+}
+
+.formula-view {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.formula-ref {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--opt-petrol);
+  color: #fff;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.formula-op {
+  color: var(--opt-orange-text);
+  font-weight: 700;
+}
+
+.formula-paren {
+  color: var(--opt-text-muted);
+}
+
+.formula-field {
+  position: relative;
+}
+
+.formula-field textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.formula-suggest {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--opt-surface);
+  border: 1px solid var(--opt-border);
+  border-radius: var(--opt-radius-control);
+  box-shadow: var(--opt-shadow-float);
+}
+
+.formula-suggest li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.formula-suggest li.active,
+.formula-suggest li:hover {
+  background: var(--opt-petrol-50);
+}
+
+.formula-preview {
+  margin: -8px 0 16px;
+}
+
+.indicator-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.indicator-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--opt-border);
+}
+
+.indicator-preview .mini-table th:first-child {
+  text-align: right;
+}

@@ -3,7 +3,8 @@
 Logiciel de pilotage de trésorerie pour TPE/PME, aux couleurs de la charte Optimum.
 Le dépôt contient le **lot 0** (design system), le **lot 1** (API, base de données,
 authentification, sociétés et rôles), le **lot 2** (banques, opérations bancaires, import de
-relevés, règles de catégorisation) et les premiers écrans branchés sur l'API.
+relevés, règles de catégorisation), le **lot 3** (plan de trésorerie complet, scénarios,
+assistant prévisionnel, indicateurs) et les écrans branchés sur l'API.
 
 ## Essayer sans être développeur
 
@@ -110,12 +111,38 @@ Principales routes (`/api/v1`) : `auth/*`, `me`, `companies`, `companies/current
 > Bridge avec de vrais identifiants. La synchronisation planifiée (4 fois par jour) et les webhooks
 > Bridge viendront avec la mise en production.
 
+### Lot 3 : plan de trésorerie
+
+- **Grille tableur** (`/plan`, bouton « Modifier les budgets » ou touche E) : flèches, Tab, Entrée
+  (retour à la colonne de départ, comme Excel), Échap, Suppr, Début/Fin ; saisie directe ou formule
+  (`=8500*1,05`) ; **collage d'une plage Excel** ; copie vers Excel ; **poignée de recopie** ;
+  annulation des 20 dernières saisies (Ctrl/⌘ Z) ; enregistrement automatique (« Enregistré »).
+- **Menu de cellule** (clic droit) : Répéter… (tous les 1 à 12 mois pendant 1 à 36 mois, raccourcis),
+  Augmenter de x % jusqu'à la fin de la période, Revenir à la valeur de base, commentaire (coin orange),
+  détail. Ligne TVA : « Calculer la TVA » (régime mensuel ou trimestriel).
+- **Affichage** : période (12 mois glissants, année civile, exercice, personnalisée ≤ 24 mois),
+  comptes, graphique + grille ou grille seule, colonne Total personnalisable (« Personnaliser le cumul »),
+  survol du graphique qui surligne le mois, mini-barre du mois courant, horloge des factures en
+  retard, valeur de base en infobulle dans les scénarios alternatifs.
+- **Scénarios** : créer (description, couleur, point de départ), renommer, couleur, dupliquer,
+  archiver / restaurer, supprimer ; vue **Comparer** (solde fin par scénario et écart à la base).
+- **Assistant prévisionnel** : historique 3/6/12 mois (mois exceptionnels exclus), croissance par
+  sens, événements (recrutement, investissement, emprunt, levée de fonds), application au scénario
+  de base ou dans un nouveau scénario.
+- **Indicateurs** (`/indicateurs`) : modèles prêts (marge brute, poids de la masse salariale,
+  frais généraux / CA…), éditeur avec autocomplétion des catégories, validation en direct et
+  aperçu sur 6 mois ; affichés dans le plan.
+
+Mesures (navigateur, mode développement) : plan de 24 mois affiché en ~0,4 s ; 16 catégories × 12 mois
+saisies au clavier sans souris ; collage Excel 12 × 20 couvert par les tests du moteur.
+
 ### Moteur de calcul (`packages/engine`)
 
 | Fichier | Règles |
 | --- | --- |
 | `plan.ts` | 5.1 agrégation, 5.2 scénarios calques, 5.3 prévision (Budget / Projection, budget global), 5.4 soldes, 5.5 factures en retard |
 | `budgets.ts` | 5.7 répétition d'une valeur, assistant « partir de mon historique » |
+| `planning.ts` | Saisie et formules de cellule, collage Excel, recopie, hausse en %, périodes (24 mois max), assistant (historique, croissance, événements, emprunt), comparaison de scénarios, TVA en budgets |
 | `indicators.ts` | 5.6 indicateurs personnalisés : parseur arithmétique, sans `eval` |
 | `vat.ts` | 5.8 estimation de la TVA |
 | `kpis.ts` | 5.9 ratios, autonomie, soldes quotidiens, 5.13 seuil |
@@ -124,8 +151,9 @@ Principales routes (`/api/v1`) : `auth/*`, `me`, `companies`, `companies/current
 
 ## Prochaines étapes
 
-1. Lot 2 : agrégation bancaire (Bridge), page Opérations, imports CSV.
-2. Passkeys et connexion Google / Microsoft (prévues au cahier des charges, non incluses ici).
-3. Fournisseur d'emails réel et vérification des mots de passe compromis (Have I Been Pwned).
+1. Lot 4 : factures (manuelles, récurrentes, import), rapprochements, vue au jour le jour, alertes.
+2. Lot 5 : analyses, exports XLSX/CSV, import des budgets depuis Excel.
+3. Passkeys et connexion Google / Microsoft (prévues au cahier des charges, non incluses ici).
+4. Fournisseur d'emails réel et vérification des mots de passe compromis (Have I Been Pwned).
 
 Le logo « optimum tréso » est une reconstitution provisoire : à remplacer par le fichier du graphiste.

@@ -1,5 +1,5 @@
 import type { BankAccount, BankConnection, Budget, Category, Commitment, ForecastMode, Rule, Scenario, Transaction } from '@optimum/treso-engine';
-import type { Indicator } from '@optimum/demo-data';
+import type { IndicatorFormat } from '@optimum/treso-engine';
 
 export type Role = 'OWNER' | 'ADMIN' | 'EDITOR' | 'ADVISOR' | 'VIEWER';
 
@@ -31,6 +31,7 @@ export interface CompanySettings {
   overdueInPlan: 'current_month' | 'due_month';
   autoHideRefunds: boolean;
   autoHideInternalTransfers: boolean;
+  fiscalYearStartMonth: number;
 }
 
 export interface Company {
@@ -56,6 +57,7 @@ export interface Bootstrap {
   budgets: Budget[];
   rules: Rule[];
   indicators: Indicator[];
+  budgetNotes: BudgetNote[];
 }
 
 export interface Session {
@@ -102,3 +104,21 @@ export interface ImportEntry {
 
 /** Nom affiché d'un compte : nom personnalisé, sinon nom fourni par la banque. */
 export const accountLabel = (a: Pick<BankAccount, 'name' | 'displayName'>) => a.displayName || a.name;
+
+export interface Indicator {
+  id: string;
+  name: string;
+  formula: string;
+  unit: string;
+  format: IndicatorFormat;
+  decimals: number;
+  position: number;
+}
+
+export interface BudgetNote {
+  scenarioId: string;
+  categoryId: string;
+  month: string;
+  note: string;
+  updatedAt?: string;
+}

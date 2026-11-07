@@ -6,6 +6,7 @@ import {
   monthOf,
   monthRange,
   openingBalanceAt,
+  indicatorResolver,
   parseFormula,
   type Category,
   type Commitment,
@@ -16,6 +17,7 @@ import {
   type Transaction,
 } from '@optimum/treso-engine';
 import { useStore } from './useStore';
+import type { Indicator } from '../api/types';
 
 export function useCurrentBalance(): number {
   const accounts = useStore((s) => s.accounts);
@@ -27,25 +29,35 @@ export function useCurrentMonth(): MonthKey {
   return monthOf(today);
 }
 
-/** Plan de trésorerie mémoïsé sur l'état du store. */
-export function usePlan(from: MonthKey, count: number): PlanResult {
+/**
+ * Plan de trésorerie mémoïsé sur l'état du store. `accountIds` limite le plan
+ * à certains comptes (opérations, solde et factures rattachées) ; `null` = tous
+ * les comptes actifs.
+ */
+export function usePlan(from: MonthKey, count: number, accountIds: string[] | null = null): PlanResult {
   const s = useStore();
-  const balance = useCurrentBalance();
   return useMemo(() => {
     const months = monthRange(from, count);
+    const selected = accountIds ? new Set(accountIds) : null;
+    const accounts = s.accounts.filter((a) => (selected ? selected.has(a.id) : a.isActive));
+    const accountSet = new Set(accounts.map((a) => a.id));
+    const balance = accounts.reduce((sum, a) => sum + a.balance, 0);
+    const transactions = selected ? s.transactions.filter((t) => accountSet.has(t.accountId)) : s.transactions;
+    const commitments = selected ? s.commitments.filter((c) => !c.accountId || accountSet.has(c.accountId)) : s.commitments;
     return computePlan({
       categories: s.categories,
-      transactions: s.transactions,
-      commitments: s.commitments,
+      transactions,
+      commitments,
       budgets: s.budgets,
       scenarios: s.scenarios,
       months,
       today: s.today,
       mode: s.settings.forecastMode,
-      openingBalance: openingBalanceAt(from, balance, s.transactions, s.today),
+      openingBalance: openingBalanceAt(from, balance, transactions, s.today),
       invoicesEnabled: s.settings.invoicesEnabled,
+      overdueInPlan: s.settings.overdueInPlan,
     });
-  }, [s.categories, s.transactions, s.commitments, s.budgets, s.scenarios, s.today, s.settings, balance, from, count]);
+  }, [s.categories, s.transactions, s.commitments, s.budgets, s.scenarios, s.accounts, s.today, s.settings, from, count, accountIds]);
 }
 
 export interface TreeRow {
@@ -90,25 +102,25 @@ export function useCategoryOptions(flow: Flow) {
   );
 }
 
-export function useIndicatorExprs(): { id: string; name: string; unit: string; expr: Expr | null }[] {
+export interface IndicatorExpr extends Indicator {
+  expr: Expr | null;
+  error: string | null;
+}
+
+export function useIndicatorExprs(): IndicatorExpr[] {
   const indicators = useStore((s) => s.indicators);
   const categories = useStore((s) => s.categories);
   return useMemo(() => {
-    const byName = new Map(categories.map((c) => [c.name.toLowerCase(), c.id]));
-    return indicators.map((i) => {
-      try {
-        const expr = parseFormula(i.formula, (name) => {
-          const n = name.toLowerCase();
-          if (n === 'encaissements') return { type: 'line', line: 'in' };
-          if (n === 'décaissements') return { type: 'line', line: 'out' };
-          const id = byName.get(n);
-          return id ? { type: 'category', id } : null;
-        });
-        return { ...i, expr };
-      } catch {
-        return { ...i, expr: null };
-      }
-    });
+    const resolve = indicatorResolver(categories);
+    return [...indicators]
+      .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, 'fr'))
+      .map((i) => {
+        try {
+          return { ...i, expr: parseFormula(i.formula, resolve), error: null };
+        } catch (e) {
+          return { ...i, expr: null, error: e instanceof Error ? e.message : 'Formule invalide.' };
+        }
+      });
   }, [indicators, categories]);
 }
 

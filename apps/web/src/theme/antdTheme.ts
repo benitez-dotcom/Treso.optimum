@@ -23,6 +23,7 @@ export function antdTheme(dark: boolean): ThemeConfig {
       Button: { fontWeight: 700, controlHeight: 40 },
       Segmented: { itemSelectedColor: dark ? '#84ADB7' : '#114C5C' },
       Tabs: { titleFontSize: 14 },
+      DatePicker: { cellActiveWithRangeBg: dark ? '#17323a' : '#eef3f4', cellHoverWithRangeBg: dark ? '#1f414a' : '#dde8eb' },
     },
   };
 }

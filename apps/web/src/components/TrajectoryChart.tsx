@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatEuroRounded, formatMonthShort, type PlanResult, type Scenario } from '@optimum/treso-engine';
+import { formatEuroRounded, formatMonthShort, type MonthKey, type PlanResult, type Scenario } from '@optimum/treso-engine';
 
 interface Props {
   plan: PlanResult;
@@ -18,14 +18,18 @@ interface Props {
   threshold: number;
   height?: number;
   showBars?: boolean;
+  /** Mois affichés (par défaut tous les mois du plan). */
+  months?: MonthKey[];
+  /** Survol d'un mois : permet de surligner la colonne correspondante de la grille. */
+  onHoverMonth?: (month: MonthKey | null) => void;
 }
 
 const k = (v: number) => `${Math.round(v / 1000)} k€`;
 
 /** Barres encaissements / décaissements (réel plein, prévu clair) et courbe de solde par scénario. */
-export function TrajectoryChart({ plan, scenarios, threshold, height = 280, showBars = true }: Props) {
+export function TrajectoryChart({ plan, scenarios, threshold, height = 280, showBars = true, months, onHoverMonth }: Props) {
   const base = plan.scenarios[plan.baseScenarioId]!;
-  const data = plan.months.map((m) => {
+  const data = (months ?? plan.months).map((m) => {
     const isPast = m < plan.currentMonth;
     const tin = base.totals.in[m]!;
     const tout = base.totals.out[m]!;
@@ -47,7 +51,13 @@ export function TrajectoryChart({ plan, scenarios, threshold, height = 280, show
   return (
     <div style={{ width: '100%', height }}>
       <ResponsiveContainer>
-        <ComposedChart data={data} margin={{ top: 16, right: 8, bottom: 0, left: 0 }} barGap={4}>
+        <ComposedChart
+          data={data}
+          margin={{ top: 16, right: 8, bottom: 0, left: 0 }}
+          barGap={4}
+          onMouseMove={(st: { activeTooltipIndex?: number }) => onHoverMonth?.(st?.activeTooltipIndex !== undefined ? ((data[st.activeTooltipIndex]?.key as MonthKey) ?? null) : null)}
+          onMouseLeave={() => onHoverMonth?.(null)}
+        >
           <defs>
             <linearGradient id="soldeAire" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stopColor="#114C5C" stopOpacity={0.16} />
@@ -104,7 +114,7 @@ export function TrajectoryChart({ plan, scenarios, threshold, height = 280, show
   );
 }
 
-export function ChartLegend({ scenarios }: { scenarios: Scenario[] }) {
+export function ChartLegend({ scenarios, showBars = true }: { scenarios: Scenario[]; showBars?: boolean }) {
   const item = (color: string, label: string, line = false, dashed = false) => (
     <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
       <span
@@ -120,10 +130,10 @@ export function ChartLegend({ scenarios }: { scenarios: Scenario[] }) {
   );
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, fontSize: 13, color: 'var(--opt-text-muted)' }}>
-      {item('var(--opt-in)', 'Encaissements réalisés')}
-      {item('var(--opt-in-soft)', 'Encaissements prévus')}
-      {item('var(--opt-out-flow)', 'Décaissements réalisés')}
-      {item('var(--opt-out-soft)', 'Décaissements prévus')}
+      {showBars && item('var(--opt-in)', 'Encaissements réalisés')}
+      {showBars && item('var(--opt-in-soft)', 'Encaissements prévus')}
+      {showBars && item('var(--opt-out-flow)', 'Décaissements réalisés')}
+      {showBars && item('var(--opt-out-soft)', 'Décaissements prévus')}
       {scenarios.map((s, i) => item(s.isBase ? 'var(--opt-petrol)' : s.color, `Solde · ${s.name}`, true, i > 0))}
     </div>
   );

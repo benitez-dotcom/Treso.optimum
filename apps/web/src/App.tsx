@@ -7,7 +7,8 @@ import { setErrorNotifier, useStore } from './store/useStore';
 import { useSession } from './api/session';
 import { AppLayout } from './layout/AppLayout';
 import { HomePage } from './pages/HomePage';
-import { PlanPage } from './pages/PlanPage';
+import { PlanPage } from './pages/plan/PlanPage';
+import { IndicatorsPage } from './pages/indicators/IndicatorsPage';
 import { InboxPage } from './pages/InboxPage';
 import { ComingSoon } from './pages/ComingSoon';
 import { SettingsPage } from './pages/SettingsPage';
@@ -51,6 +52,7 @@ const router = createBrowserRouter([
           { path: 'a-traiter', element: <InboxPage /> },
           { path: 'plan', element: <PlanPage /> },
           { path: 'operations', element: <OperationsPage /> },
+          { path: 'indicateurs', element: <IndicatorsPage /> },
           { path: 'parametres', element: <SettingsPage /> },
           { path: 'parametres/banques/retour', element: <BankCallbackPage /> },
           { path: 'societes', element: <CompaniesPage /> },
