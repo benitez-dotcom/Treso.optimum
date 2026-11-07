@@ -9,3 +9,4 @@ export * from './vat';
 export * from './kpis';
 export * from './format';
 export * from './bank';
+export * from './planning';

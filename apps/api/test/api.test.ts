@@ -123,7 +123,7 @@ describe('sociétés, données et isolation', () => {
     const data = (await inject({ method: 'GET', url: '/api/v1/bootstrap', headers: auth(t) })).json();
     expect(data.company.name).toBe('SARL Neuve');
     expect(data.transactions).toHaveLength(0);
-    expect(data.scenarios).toEqual([{ id: 'base', name: 'Scénario de base', color: '#114C5C', isBase: true }]);
+    expect(data.scenarios).toEqual([{ id: 'base', name: 'Scénario de base', color: '#114C5C', isBase: true, description: null, archived: false }]);
   });
 
   it('un autre utilisateur ne voit rien de la société (API)', async () => {

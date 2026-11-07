@@ -32,6 +32,7 @@ const settingsBody = z
     overdueInPlan: z.enum(['current_month', 'due_month']),
     autoHideRefunds: z.boolean(),
     autoHideInternalTransfers: z.boolean(),
+    fiscalYearStartMonth: z.number().int().min(1).max(12),
   })
   .partial()
   .strict();
@@ -46,6 +47,7 @@ const settingsColumns: Record<keyof z.infer<typeof settingsBody>, string> = {
   overdueInPlan: 'overdue_in_plan',
   autoHideRefunds: 'auto_hide_refunds',
   autoHideInternalTransfers: 'auto_hide_internal_transfers',
+  fiscalYearStartMonth: 'fiscal_year_start_month',
 };
 
 export interface CompanyRow {
@@ -63,6 +65,7 @@ export interface CompanyRow {
   overdue_in_plan: 'current_month' | 'due_month';
   auto_hide_refunds: boolean;
   auto_hide_internal_transfers: boolean;
+  fiscal_year_start_month: number;
   is_demo: boolean;
 }
 
@@ -83,6 +86,7 @@ export const companyDto = (c: CompanyRow) => ({
     overdueInPlan: c.overdue_in_plan,
     autoHideRefunds: c.auto_hide_refunds,
     autoHideInternalTransfers: c.auto_hide_internal_transfers,
+    fiscalYearStartMonth: c.fiscal_year_start_month,
   },
 });
 

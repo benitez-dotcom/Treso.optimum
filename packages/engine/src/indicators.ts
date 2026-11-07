@@ -178,3 +178,113 @@ export function formatFormula(expr: Expr, nameOf: (ref: Expr) => string, parentP
     }
   }
 }
+
+/** Lignes du plan utilisables dans une formule, en plus des catégories. */
+export const INDICATOR_LINES: { name: string; line: 'in' | 'out' | 'closing' }[] = [
+  { name: 'Encaissements', line: 'in' },
+  { name: 'Décaissements', line: 'out' },
+  { name: 'Solde fin', line: 'closing' },
+];
+
+const norm = (s: string) => s.trim().toLocaleLowerCase('fr');
+
+/** Résolution d'un nom entre crochets : ligne du plan ou catégorie (insensible à la casse). */
+export function indicatorResolver(categories: { id: string; name: string }[]): (name: string) => Expr | null {
+  const byName = new Map(categories.map((c) => [norm(c.name), c.id]));
+  const lines = new Map(INDICATOR_LINES.map((l) => [norm(l.name), l.line]));
+  return (name) => {
+    const n = norm(name);
+    const line = lines.get(n);
+    if (line) return { type: 'line', line };
+    const id = byName.get(n);
+    return id ? { type: 'category', id } : null;
+  };
+}
+
+export type IndicatorFormat = 'number' | 'currency' | 'percent';
+
+export interface IndicatorTemplate {
+  key: string;
+  name: string;
+  formula: string;
+  unit: string;
+  format: IndicatorFormat;
+  description: string;
+}
+
+/**
+ * Modèles prêts à l'emploi (5.6), construits à partir de la nature des
+ * catégories racines : ventes, achats, salaires, frais généraux. Un modèle
+ * n'est proposé que si les catégories nécessaires existent.
+ */
+export function indicatorTemplates(
+  categories: { id: string; name: string; kind: string; parentId: string | null; isVat?: boolean }[],
+): IndicatorTemplate[] {
+  const refs = (kind: string) => {
+    const list = categories.filter((c) => c.kind === kind && !c.isVat);
+    // Les plus hautes catégories de cette nature : leurs sous-catégories sont déjà incluses.
+    const chosen = list.filter((c) => !list.some((p) => p.id === c.parentId));
+    if (!chosen.length) return null;
+    const s = chosen.map((c) => `[${c.name}]`).join(' + ');
+    return chosen.length > 1 ? `(${s})` : s;
+  };
+  const sales = refs('revenue');
+  const purchases = refs('purchases');
+  const payroll = refs('payroll');
+  const overheads = refs('overheads');
+  const out: IndicatorTemplate[] = [];
+  if (sales && purchases) {
+    out.push({
+      key: 'gross-margin',
+      name: 'Marge brute',
+      formula: `(${sales} - ${purchases}) / ${sales} * 100`,
+      unit: '%',
+      format: 'percent',
+      description: 'Part des ventes qui reste après les achats.',
+    });
+    out.push({
+      key: 'purchases-rate',
+      name: "Taux d'achats consommés",
+      formula: `${purchases} / 1,2 / (${sales} / 1,2) * 100`,
+      unit: '%',
+      format: 'percent',
+      description: 'Achats hors taxes rapportés aux ventes hors taxes.',
+    });
+  }
+  if (sales && payroll) {
+    out.push({
+      key: 'payroll-weight',
+      name: 'Poids de la masse salariale',
+      formula: `${payroll} / (${sales} / 1,2) * 100`,
+      unit: '%',
+      format: 'percent',
+      description: 'Salaires et charges sociales rapportés au chiffre d’affaires HT.',
+    });
+  }
+  if (sales && overheads) {
+    out.push({
+      key: 'overheads-ratio',
+      name: 'Frais généraux / CA',
+      formula: `${overheads} / ${sales} * 100`,
+      unit: '%',
+      format: 'percent',
+      description: 'Poids des frais de fonctionnement dans les ventes.',
+    });
+  }
+  out.push({
+    key: 'net-flow',
+    name: 'Flux net du mois',
+    formula: '[Encaissements] - [Décaissements]',
+    unit: '€',
+    format: 'currency',
+    description: 'Ce qui entre moins ce qui sort, mois par mois.',
+  });
+  return out;
+}
+
+/** Valeur formatée d'un indicateur : « 26,96 % », « 1 250 € », « — ». */
+export function formatIndicator(value: number | null, unit: string, decimals = 2): string {
+  if (value === null || !Number.isFinite(value)) return '—';
+  const s = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
+  return unit ? `${s} ${unit}` : s;
+}

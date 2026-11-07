@@ -75,6 +75,8 @@ export interface PlanResult {
   currentMonth: MonthKey;
   baseScenarioId: string;
   scenarios: Record<string, ScenarioPlan>;
+  /** Factures en retard reportées au mois courant (montant par ligne et par mois, règle 5.5). */
+  overdue: Record<string, Record<MonthKey, number>>;
 }
 
 interface OwnAggregate {
@@ -134,6 +136,7 @@ export function computePlan(input: PlanInput): PlanResult {
 
   // 5.1 — agrégats propres à chaque ligne (sans les sous-catégories)
   const own = new Map<string, Map<MonthKey, OwnAggregate>>();
+  const overdue: Record<string, Record<MonthKey, number>> = {};
   const hidden = new Map<MonthKey, number>(months.map((m) => [m, 0]));
   const bump = (rowId: string, month: MonthKey, key: keyof OwnAggregate, value: number) => {
     let row = own.get(rowId);
@@ -168,8 +171,14 @@ export function computePlan(input: PlanInput): PlanResult {
       const remaining = round2(c.amountInclTax - (c.amountPaid ?? 0));
       if (remaining <= 0) continue;
       let month = monthOf(c.dueAt);
-      if (c.dueAt < today && overdueInPlan === 'current_month') month = currentMonth;
+      const late = c.dueAt < today && overdueInPlan === 'current_month' && month < currentMonth;
+      if (late) month = currentMonth;
       if (!monthSet.has(month)) continue;
+      if (late && !c.hidden) {
+        const rowId = c.categoryId && byId.has(c.categoryId) ? c.categoryId : c.flow === 'in' ? UNCATEGORIZED_IN : UNCATEGORIZED_OUT;
+        const row = (overdue[rowId] ??= {});
+        row[month] = round2((row[month] ?? 0) + remaining);
+      }
       if (c.hidden) {
         if (month >= currentMonth) {
           hidden.set(month, round2((hidden.get(month) ?? 0) + (c.flow === 'in' ? remaining : -remaining)));
@@ -298,7 +307,7 @@ export function computePlan(input: PlanInput): PlanResult {
     result[scenario.id] = { scenarioId: scenario.id, rows, totals, hidden: hiddenRec, opening, closing, variation };
   }
 
-  return { months, currentMonth, baseScenarioId: base.id, scenarios: result };
+  return { months, currentMonth, baseScenarioId: base.id, scenarios: result, overdue };
 }
 
 /**

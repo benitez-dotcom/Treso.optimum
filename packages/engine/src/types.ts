@@ -91,6 +91,8 @@ export interface Scenario {
   name: string;
   color: string;
   isBase: boolean;
+  description?: string | null;
+  archived?: boolean;
 }
 
 export interface Budget {

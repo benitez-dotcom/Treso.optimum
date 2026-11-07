@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { Budget, Category, Commitment, Scenario } from '@optimum/treso-engine';
+import type { Budget, Category, Commitment } from '@optimum/treso-engine';
 import { audit, loadCompany, requireRole, tenant, WRITERS, type Role } from '../context';
 import { badRequest, forbidden, notFound } from '../errors';
 import { companyDto, type CompanyRow } from './account';
 import { accountDto, connectionDto } from './banking';
 import { toRule, toTransaction } from '../services/operations';
+import { indicatorDto, noteDto, scenarioDto } from './plan';
 
 const monthKey = z.string().regex(/^\d{4}-\d{2}-01$/, 'Mois invalide (format AAAA-MM-01).');
 const amount = z.number().min(0, 'Un budget ne peut pas être négatif.').max(1e10).nullable();
@@ -54,7 +55,7 @@ export function registerDataRoutes(app: FastifyInstance) {
       const q = (sql: string) => tx.query<Row>(sql).then((r) => r.rows);
       const company = (await tx.query<Row>('SELECT * FROM companies WHERE id = $1', [req.company!.id])).rows[0];
       if (!company) throw notFound();
-      const [connections, accounts, categories, transactions, commitments, scenarios, budgets, rules, indicators] = await Promise.all([
+      const [connections, accounts, categories, transactions, commitments, scenarios, budgets, rules, indicators, notes] = await Promise.all([
         q('SELECT * FROM bank_connections ORDER BY created_at'),
         q('SELECT * FROM bank_accounts ORDER BY is_manual, name'),
         q('SELECT * FROM categories ORDER BY flow, position'),
@@ -63,7 +64,8 @@ export function registerDataRoutes(app: FastifyInstance) {
         q('SELECT * FROM scenarios ORDER BY is_base DESC, name'),
         q("SELECT scenario_id, category_id, to_char(month, 'YYYY-MM-DD') AS month, amount FROM budgets"),
         q('SELECT * FROM rules ORDER BY priority DESC'),
-        q('SELECT * FROM indicators ORDER BY name'),
+        q('SELECT * FROM indicators ORDER BY position, name'),
+        q("SELECT scenario_id, category_id, to_char(month, 'YYYY-MM-DD') AS month, note, updated_at FROM budget_notes"),
       ]);
       return {
         company: companyDto(company as unknown as CompanyRow),
@@ -73,10 +75,11 @@ export function registerDataRoutes(app: FastifyInstance) {
         categories: categories.map(toCategory),
         transactions: transactions.map(toTransaction),
         commitments: commitments.map(toCommitment),
-        scenarios: scenarios.map((s): Scenario => ({ id: s.id as string, name: s.name as string, color: s.color as string, isBase: s.is_base as boolean })),
+        scenarios: scenarios.map(scenarioDto),
         budgets: budgets.map((b): Budget => ({ scenarioId: b.scenario_id as string, categoryId: b.category_id as string, month: b.month as string, amount: b.amount as number })),
         rules: rules.map(toRule),
-        indicators: indicators.map((i) => ({ id: i.id, name: i.name, formula: i.formula, unit: i.unit })),
+        indicators: indicators.map(indicatorDto),
+        budgetNotes: notes.map(noteDto),
       };
     });
   });
@@ -119,12 +122,15 @@ export function registerDataRoutes(app: FastifyInstance) {
       .object({
         name: z.string().trim().min(1, 'Donnez un nom à votre scénario.').max(80),
         color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+        description: z.string().trim().max(500).optional(),
         copyFrom: z.string().optional(),
       })
       .parse(req.body);
     const id = `sc-${randomUUID().slice(0, 8)}`;
     await tenant(req, async (tx) => {
-      await tx.query('INSERT INTO scenarios (company_id, id, name, color, is_base) VALUES ($1, $2, $3, $4, false)', [req.company!.id, id, body.name, body.color]);
+      await tx.query('INSERT INTO scenarios (company_id, id, name, color, is_base, description) VALUES ($1, $2, $3, $4, false, $5)', [
+        req.company!.id, id, body.name, body.color, body.description || null,
+      ]);
       if (body.copyFrom) {
         await tx.query(
           `INSERT INTO budgets (company_id, scenario_id, category_id, month, amount)
@@ -134,7 +140,7 @@ export function registerDataRoutes(app: FastifyInstance) {
       }
       await audit(tx, req, 'create', 'scenario', id, null, body);
     });
-    return reply.status(201).send({ id, name: body.name, color: body.color, isBase: false });
+    return reply.status(201).send({ id, name: body.name, color: body.color, isBase: false, description: body.description || null, archived: false });
   });
 
   app.delete('/scenarios/:id', { preHandler: loadCompany }, async (req, reply) => {
