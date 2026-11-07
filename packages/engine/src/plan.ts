@@ -3,6 +3,7 @@
  * Module pur : aucune dépendance à l'interface ni au réseau.
  */
 import { monthOf } from './dates';
+import { countsInBalance, countsInCategories } from './types';
 import type {
   Budget,
   Category,
@@ -146,6 +147,7 @@ export function computePlan(input: PlanInput): PlanResult {
   };
 
   for (const t of transactions) {
+    if (!countsInCategories(t)) continue;
     const month = monthOf(t.bookedAt);
     if (!monthSet.has(month)) continue;
     if (t.hidden) {
@@ -311,6 +313,7 @@ export function openingBalanceAt(
 ): number {
   let total = currentBalance;
   for (const t of transactions) {
+    if (!countsInBalance(t)) continue;
     if (t.bookedAt >= month && t.bookedAt <= today) total -= t.amount;
   }
   return round2(total);

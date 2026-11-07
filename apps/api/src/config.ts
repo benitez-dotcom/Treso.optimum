@@ -22,6 +22,8 @@ export interface Config {
   cookieSecure: boolean;
   /** Expose les liens des emails dans les réponses (développement et tests uniquement). */
   exposeEmailLinks: boolean;
+  /** Agrégateur bancaire Bridge (https://docs.bridgeapi.io) : absent = seule la banque de démonstration est proposée. */
+  bridge: { clientId: string; clientSecret: string; baseUrl: string; version: string } | null;
 }
 
 export function loadConfig(overrides: Partial<Config> = {}): Config {
@@ -45,6 +47,15 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     webDist: process.env.WEB_DIST ?? null,
     cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : env === 'production',
     exposeEmailLinks: process.env.EXPOSE_EMAIL_LINKS ? process.env.EXPOSE_EMAIL_LINKS === 'true' : env !== 'production',
+    bridge:
+      process.env.BRIDGE_CLIENT_ID && process.env.BRIDGE_CLIENT_SECRET
+        ? {
+            clientId: process.env.BRIDGE_CLIENT_ID,
+            clientSecret: process.env.BRIDGE_CLIENT_SECRET,
+            baseUrl: process.env.BRIDGE_BASE_URL ?? 'https://api.bridgeapi.io',
+            version: process.env.BRIDGE_VERSION ?? '2025-01-15',
+          }
+        : null,
     ...overrides,
   };
   return config;

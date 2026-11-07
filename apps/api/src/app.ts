@@ -10,6 +10,8 @@ import type { Mailer } from './mailer';
 import { registerAuthRoutes } from './routes/auth';
 import { registerAccountRoutes } from './routes/account';
 import { registerDataRoutes } from './routes/data';
+import { registerBankingRoutes } from './routes/banking';
+import { registerOperationRoutes } from './routes/operations';
 
 export interface AppOptions {
   config: Config;
@@ -35,6 +37,8 @@ export async function buildApp({ config, db, mailer, logger = false }: AppOption
       registerAuthRoutes(api);
       registerAccountRoutes(api);
       registerDataRoutes(api);
+      registerBankingRoutes(api);
+      registerOperationRoutes(api);
     },
     { prefix: '/api/v1' },
   );

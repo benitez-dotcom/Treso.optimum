@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { Budget, Category, Commitment, Rule, Scenario, Transaction } from '@optimum/treso-engine';
+import type { Budget, Category, Commitment, Scenario } from '@optimum/treso-engine';
 import { audit, loadCompany, requireRole, tenant, WRITERS, type Role } from '../context';
 import { badRequest, forbidden, notFound } from '../errors';
 import { companyDto, type CompanyRow } from './account';
+import { accountDto, connectionDto } from './banking';
+import { toRule, toTransaction } from '../services/operations';
 
 const monthKey = z.string().regex(/^\d{4}-\d{2}-01$/, 'Mois invalide (format AAAA-MM-01).');
 const amount = z.number().min(0, 'Un budget ne peut pas être négatif.').max(1e10).nullable();
@@ -27,19 +29,6 @@ const toCategory = (r: Row): Category => ({
   isSystem: r.is_system as boolean,
 });
 
-const toTransaction = (r: Row): Transaction => ({
-  id: r.id as string,
-  accountId: r.account_id as string,
-  bookedAt: r.booked_at as string,
-  rawLabel: r.raw_label as string,
-  label: r.label as string,
-  counterparty: (r.counterparty as string | null) ?? undefined,
-  amount: r.amount as number,
-  categoryId: (r.category_id as string | null) ?? null,
-  suggestion: (r.suggestion as Transaction['suggestion']) ?? null,
-  hidden: r.hidden as boolean,
-  note: (r.note as string | null) ?? undefined,
-});
 
 const toCommitment = (r: Row): Commitment => ({
   id: r.id as string,
@@ -65,8 +54,9 @@ export function registerDataRoutes(app: FastifyInstance) {
       const q = (sql: string) => tx.query<Row>(sql).then((r) => r.rows);
       const company = (await tx.query<Row>('SELECT * FROM companies WHERE id = $1', [req.company!.id])).rows[0];
       if (!company) throw notFound();
-      const [accounts, categories, transactions, commitments, scenarios, budgets, rules, indicators] = await Promise.all([
-        q('SELECT * FROM bank_accounts ORDER BY id'),
+      const [connections, accounts, categories, transactions, commitments, scenarios, budgets, rules, indicators] = await Promise.all([
+        q('SELECT * FROM bank_connections ORDER BY created_at'),
+        q('SELECT * FROM bank_accounts ORDER BY is_manual, name'),
         q('SELECT * FROM categories ORDER BY flow, position'),
         q('SELECT * FROM transactions ORDER BY booked_at, id'),
         q('SELECT * FROM commitments ORDER BY due_at'),
@@ -78,13 +68,14 @@ export function registerDataRoutes(app: FastifyInstance) {
       return {
         company: companyDto(company as unknown as CompanyRow),
         role: req.company!.role,
-        accounts: accounts.map((a) => ({ id: a.id, name: a.name, bankName: a.bank_name, balance: a.balance, isActive: a.is_active })),
+        connections: connections.map(connectionDto),
+        accounts: accounts.map(accountDto),
         categories: categories.map(toCategory),
         transactions: transactions.map(toTransaction),
         commitments: commitments.map(toCommitment),
         scenarios: scenarios.map((s): Scenario => ({ id: s.id as string, name: s.name as string, color: s.color as string, isBase: s.is_base as boolean })),
         budgets: budgets.map((b): Budget => ({ scenarioId: b.scenario_id as string, categoryId: b.category_id as string, month: b.month as string, amount: b.amount as number })),
-        rules: rules.map((r): Rule => ({ id: r.id as string, conditions: r.conditions as Rule['conditions'], categoryId: r.category_id as string, autoApply: r.auto_apply as boolean, priority: r.priority as number })),
+        rules: rules.map(toRule),
         indicators: indicators.map((i) => ({ id: i.id, name: i.name, formula: i.formula, unit: i.unit })),
       };
     });
@@ -159,36 +150,6 @@ export function registerDataRoutes(app: FastifyInstance) {
     return reply.status(204).send();
   });
 
-  // ───────── Opérations ─────────
-  app.post('/transactions/batch', { preHandler: loadCompany }, async (req) => {
-    requireRole(req, WRITERS);
-    const { ops } = z
-      .object({
-        ops: z
-          .array(z.object({ id: z.string(), categoryId: z.string().nullable().optional(), hidden: z.boolean().optional(), note: z.string().max(500).optional() }))
-          .min(1)
-          .max(1000),
-      })
-      .parse(req.body);
-    return tenant(req, async (tx) => {
-      let updated = 0;
-      for (const op of ops) {
-        const r = await tx.query(
-          `UPDATE transactions SET
-             category_id = CASE WHEN $3 THEN $2 ELSE category_id END,
-             hidden = coalesce($4, hidden),
-             note = coalesce($5, note),
-             suggestion = CASE WHEN $3 OR $4 IS NOT NULL THEN NULL ELSE suggestion END
-           WHERE id = $1`,
-          [op.id, op.categoryId ?? null, 'categoryId' in op, op.hidden ?? null, op.note ?? null],
-        );
-        updated += r.rowCount ?? 0;
-      }
-      await audit(tx, req, 'update', 'transactions', null, null, { count: ops.length, sample: ops.slice(0, 5) });
-      return { updated };
-    });
-  });
-
   // ───────── Rapprochements ─────────
   app.post('/reconciliations', { preHandler: loadCompany }, async (req) => {
     requireRole(req, WRITERS);
@@ -225,36 +186,6 @@ export function registerDataRoutes(app: FastifyInstance) {
       await audit(tx, req, 'update', 'commitment', id, before, body);
       return { ok: true };
     });
-  });
-
-  // ───────── Règles ─────────
-  app.post('/rules', { preHandler: loadCompany }, async (req, reply) => {
-    requireRole(req, WRITERS);
-    const body = z
-      .object({
-        conditions: z
-          .array(
-            z.union([
-              z.object({ field: z.literal('label'), op: z.enum(['contains', 'startsWith']), value: z.string().min(1).max(120) }),
-              z.object({ field: z.literal('amount'), op: z.literal('between'), min: z.number(), max: z.number() }),
-              z.object({ field: z.literal('account'), op: z.literal('is'), value: z.string() }),
-            ]),
-          )
-          .min(1)
-          .max(5),
-        categoryId: z.string(),
-        autoApply: z.boolean().default(false),
-        priority: z.number().int().min(0).max(100).default(5),
-      })
-      .parse(req.body);
-    const id = `r-${randomUUID().slice(0, 8)}`;
-    await tenant(req, async (tx) => {
-      await tx.query('INSERT INTO rules (company_id, id, conditions, category_id, auto_apply, priority) VALUES ($1, $2, $3, $4, $5, $6)', [
-        req.company!.id, id, JSON.stringify(body.conditions), body.categoryId, body.autoApply, body.priority,
-      ]);
-      await audit(tx, req, 'create', 'rule', id, null, body);
-    });
-    return reply.status(201).send({ id, ...body });
   });
 
   // ───────── Journal d'activité ─────────

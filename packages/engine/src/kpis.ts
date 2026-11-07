@@ -28,7 +28,7 @@ export function ratioKpis(categories: Category[], transactions: Transaction[], f
   const sums: Record<CategoryKind, number> = { revenue: 0, purchases: 0, overheads: 0, payroll: 0, none: 0 };
   let allOut = 0;
   for (const t of transactions) {
-    if (t.hidden || !t.categoryId || t.bookedAt < from || t.bookedAt > to) continue;
+    if (t.hidden || t.isSplit || !t.categoryId || t.bookedAt < from || t.bookedAt > to) continue;
     const cat = byId.get(t.categoryId);
     if (!cat) continue;
     const v = cat.flow === 'in' ? t.amount : -t.amount;
@@ -52,7 +52,7 @@ export function cashAutonomyMonths(balance: number, transactions: Transaction[],
   const from = addMonths(current, -3);
   let out = 0;
   for (const t of transactions) {
-    if (t.hidden || t.amount >= 0) continue;
+    if (t.hidden || t.parentId || t.amount >= 0) continue;
     const m = monthOf(t.bookedAt);
     if (m >= from && m < current) out += -t.amount;
   }
@@ -89,6 +89,7 @@ export function dailyBalances(
   };
   let opening = currentBalance;
   for (const t of transactions) {
+    if (t.parentId) continue;
     if (t.bookedAt >= from && t.bookedAt <= today) {
       opening -= t.amount;
       add(t.bookedAt, t.amount);

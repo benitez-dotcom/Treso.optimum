@@ -8,3 +8,4 @@ export * from './indicators';
 export * from './vat';
 export * from './kpis';
 export * from './format';
+export * from './bank';

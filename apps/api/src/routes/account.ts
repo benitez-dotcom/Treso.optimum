@@ -30,6 +30,8 @@ const settingsBody = z
     vatEnabled: z.boolean(),
     vatRegime: z.enum(['monthly', 'quarterly']),
     overdueInPlan: z.enum(['current_month', 'due_month']),
+    autoHideRefunds: z.boolean(),
+    autoHideInternalTransfers: z.boolean(),
   })
   .partial()
   .strict();
@@ -42,6 +44,8 @@ const settingsColumns: Record<keyof z.infer<typeof settingsBody>, string> = {
   vatEnabled: 'vat_enabled',
   vatRegime: 'vat_regime',
   overdueInPlan: 'overdue_in_plan',
+  autoHideRefunds: 'auto_hide_refunds',
+  autoHideInternalTransfers: 'auto_hide_internal_transfers',
 };
 
 export interface CompanyRow {
@@ -57,6 +61,8 @@ export interface CompanyRow {
   vat_enabled: boolean;
   vat_regime: 'monthly' | 'quarterly';
   overdue_in_plan: 'current_month' | 'due_month';
+  auto_hide_refunds: boolean;
+  auto_hide_internal_transfers: boolean;
   is_demo: boolean;
 }
 
@@ -75,6 +81,8 @@ export const companyDto = (c: CompanyRow) => ({
     vatEnabled: c.vat_enabled,
     vatRegime: c.vat_regime,
     overdueInPlan: c.overdue_in_plan,
+    autoHideRefunds: c.auto_hide_refunds,
+    autoHideInternalTransfers: c.auto_hide_internal_transfers,
   },
 });
 
