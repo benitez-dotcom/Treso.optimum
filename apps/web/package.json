@@ -18,6 +18,8 @@
     "@optimum/treso-engine": "workspace:*",
     "antd": "^5.29.3",
     "dayjs": "1.11.13",
+    "exceljs": "4.4.0",
+    "fflate": "0.8.2",
     "papaparse": "5.5.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

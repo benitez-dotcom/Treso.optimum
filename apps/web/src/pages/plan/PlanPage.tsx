@@ -7,6 +7,8 @@ import { App, Button, Dropdown, Segmented, Select, Switch, Tooltip, type MenuPro
 import {
   BulbOutlined,
   CheckOutlined,
+  DownloadOutlined,
+  ExportOutlined,
   EditOutlined,
   LoadingOutlined,
   MoreOutlined,
@@ -43,6 +45,8 @@ import { ComparisonView } from './ComparisonView';
 import { ForecastAssistant } from './ForecastAssistant';
 import { CellDetailDrawer } from './CellDetailDrawer';
 import { SCENARIO_COLORS } from './format';
+import { ExportDrawer } from '../../exports/ExportDrawer';
+import { BudgetImportModal } from '../../exports/BudgetImportModal';
 import '../plan.css';
 
 type CellTarget = { rowId: string; month: MonthKey };
@@ -125,6 +129,8 @@ export function PlanPage() {
   const [detail, setDetail] = useState<CellTarget | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [assistant, setAssistant] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const sp = plan.scenarios[scenario.id]!;
   const notes = useMemo(
@@ -408,6 +414,16 @@ export function PlanPage() {
             </label>
           </>
         )}
+        <Button icon={<ExportOutlined />} onClick={() => setExportOpen(true)}>
+          Exporter
+        </Button>
+        {mayEdit && !compare && (
+          <Tooltip title="Importer des budgets depuis Excel ou CSV">
+            <Button icon={<DownloadOutlined />} onClick={() => setImportOpen(true)}>
+              Importer
+            </Button>
+          </Tooltip>
+        )}
         {mayEdit && !compare && (
           <Button icon={<BulbOutlined />} onClick={() => setAssistant(true)}>
             Assistant
@@ -580,6 +596,12 @@ export function PlanPage() {
           setCumulOpen(false);
         }}
       />
+      <ExportDrawer
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        defaults={{ from: period.from, to: period.to, contents: ['plan'], scenarioIds: compare ? compareIds : [scenario.id] }}
+      />
+      <BudgetImportModal open={importOpen} scenarioId={scenario.id} onClose={() => setImportOpen(false)} />
       <ForecastAssistant
         open={assistant}
         currentMonth={current}

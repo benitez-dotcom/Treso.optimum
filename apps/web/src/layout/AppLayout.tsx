@@ -34,6 +34,7 @@ const titles: Record<string, string> = {
   '/a-traiter': 'À traiter',
   '/plan': 'Plan de trésorerie',
   '/indicateurs': 'Indicateurs',
+  '/analyses': 'Analyses',
   '/factures/clients': 'Factures clients',
   '/factures/fournisseurs': 'Factures fournisseurs',
   '/journalier': 'Au jour le jour',

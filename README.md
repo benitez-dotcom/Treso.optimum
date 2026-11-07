@@ -5,7 +5,8 @@ Le dépôt contient le **lot 0** (design system), le **lot 1** (API, base de don
 authentification, sociétés et rôles), le **lot 2** (banques, opérations bancaires, import de
 relevés, règles de catégorisation), le **lot 3** (plan de trésorerie complet, scénarios,
 assistant prévisionnel, indicateurs), le **lot 4** (factures, rapprochements, vue au jour le jour,
-alertes) et les écrans branchés sur l'API.
+alertes), le **lot 5** (analyses, rapport PDF, exports XLSX / CSV, import des budgets) et les
+écrans branchés sur l'API.
 
 ## Essayer sans être développeur
 
@@ -160,6 +161,25 @@ saisies au clavier sans souris ; collage Excel 12 × 20 couvert par les tests du
 > Non inclus : dépôt de factures avec lecture automatique (OCR), connexion aux logiciels de
 > facturation, envoi quotidien des alertes par email.
 
+### Lot 5 : analyses et exports
+
+- **Analyses** (`/analyses`) : période (12 derniers mois par défaut), comparaison avec la période
+  précédente, 10 KPI de la règle 5.9 avec explication « ? », où va / d'où vient l'argent (barres
+  dépliables), évolution de 6 catégories au plus (réalisé plein, prévision en pointillés),
+  prévu vs réalisé sur les mois écoulés budgétés, top 10 clients et fournisseurs avec délai moyen
+  et concentration.
+- **Rapport PDF** : « Télécharger le rapport PDF » imprime une mise en page A4 dédiée (couverture
+  avec logo et motif Optimum, synthèse, KPI, graphiques) ; choisir « Enregistrer en PDF ».
+- **Exporter** (plan et analyses) : période (24 mois max), contenus (plan, prévu vs réalisé,
+  budgets saisis, opérations, factures, au jour le jour, indicateurs), scénarios, format XLSX
+  (un onglet par contenu, logo, en-têtes pétrole, formats € et dates, volets figés) ou CSV
+  (point-virgule, archive ZIP).
+- **Importer des budgets** (plan) : modèle téléchargeable, XLSX ou CSV, mois reconnus sous toutes
+  les formes courantes (« janv. 2027 », « 01/2027 »…), catégories par chemin ou par nom, erreurs
+  par ligne ; l'export « Budgets saisis » se réimporte sans perte ; annulable avec Ctrl/⌘ Z.
+
+> Non inclus : exports programmés par email et génération du PDF côté serveur.
+
 ### Moteur de calcul (`packages/engine`)
 
 | Fichier | Règles |
@@ -168,6 +188,8 @@ saisies au clavier sans souris ; collage Excel 12 × 20 couvert par les tests du
 | `budgets.ts` | 5.7 répétition d'une valeur, assistant « partir de mon historique » |
 | `invoices.ts` | Délais, séries récurrentes, statuts, 5.11 rapprochements et scores, 5.12 compte d'une facture, doublons, import, relance |
 | `daily.ts` | Projection au jour le jour, regroupement semaine / mois, KPI, 5.13 alertes |
+| `analytics.ts` | 5.9 KPI sur une période, période précédente, répartition par catégorie, prévu vs réalisé, tiers |
+| `exports.ts` | Contenus d'export (onglets typés), CSV, modèle et import des budgets |
 | `planning.ts` | Saisie et formules de cellule, collage Excel, recopie, hausse en %, périodes (24 mois max), assistant (historique, croissance, événements, emprunt), comparaison de scénarios, TVA en budgets |
 | `indicators.ts` | 5.6 indicateurs personnalisés : parseur arithmétique, sans `eval` |
 | `vat.ts` | 5.8 estimation de la TVA |
@@ -177,8 +199,9 @@ saisies au clavier sans souris ; collage Excel 12 × 20 couvert par les tests du
 
 ## Prochaines étapes
 
-1. Lot 5 : analyses, exports XLSX/CSV, import des budgets depuis Excel.
-2. Passkeys et connexion Google / Microsoft (prévues au cahier des charges, non incluses ici).
-3. Fournisseur d'emails réel et vérification des mots de passe compromis (Have I Been Pwned).
+1. Écran Catégories (création, nature, TVA, compte par défaut) : indispensable pour les KPI.
+2. Lot 6 : abonnement, intégrations, conseiller, pré-comptabilité.
+3. Passkeys et connexion Google / Microsoft (prévues au cahier des charges, non incluses ici).
+4. Fournisseur d'emails réel et vérification des mots de passe compromis (Have I Been Pwned).
 
 Le logo « optimum tréso » est une reconstitution provisoire : à remplacer par le fichier du graphiste.

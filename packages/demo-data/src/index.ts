@@ -240,7 +240,7 @@ export function buildDemoData(today: IsoDate): DemoData {
   inv('out', 'Cabinet comptable', 'HON-1126', 1_440, 24, 'honoraires');
   for (const x of commitments) x.paymentTerms ??= 'd30';
 
-  // Scénarios et budgets : moyenne des 6 derniers mois, sur 12 mois
+  // Scénarios et budgets : moyenne des 6 derniers mois, des 6 mois passés (prévu vs réalisé) aux 12 prochains
   const scenarios: Scenario[] = [
     { id: 'base', name: 'Scénario de base', color: '#114C5C', isBase: true },
     { id: 'recrutement', name: 'Recrutement en mars', color: '#8A6FB0', isBase: false },
@@ -248,7 +248,7 @@ export function buildDemoData(today: IsoDate): DemoData {
   const averages = averageFromHistory(demoCategories, withSuggestions, current, 6);
   const budgets: Budget[] = [];
   const future = monthRange(current, 12);
-  for (const m of future) {
+  for (const m of monthRange(addMonths(current, -6), 18)) {
     const mon = Number(m.slice(5, 7));
     const season = 1 + 0.12 * Math.sin(((mon - 3) / 12) * 2 * Math.PI);
     for (const cat of demoCategories) {

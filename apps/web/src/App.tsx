@@ -11,6 +11,7 @@ import { PlanPage } from './pages/plan/PlanPage';
 import { IndicatorsPage } from './pages/indicators/IndicatorsPage';
 import { InvoicesPage } from './pages/invoices/InvoicesPage';
 import { DailyPage } from './pages/daily/DailyPage';
+import { AnalysesPage } from './pages/analyses/AnalysesPage';
 import { InboxPage } from './pages/InboxPage';
 import { ComingSoon } from './pages/ComingSoon';
 import { SettingsPage } from './pages/SettingsPage';
@@ -56,6 +57,7 @@ const router = createBrowserRouter([
           { path: 'operations', element: <OperationsPage /> },
           { path: 'indicateurs', element: <IndicatorsPage /> },
           { path: 'journalier', element: <DailyPage /> },
+          { path: 'analyses', element: <AnalysesPage /> },
           { path: 'factures/clients', element: <InvoicesPage key="in" flow="in" /> },
           { path: 'factures/fournisseurs', element: <InvoicesPage key="out" flow="out" /> },
           { path: 'parametres', element: <SettingsPage /> },

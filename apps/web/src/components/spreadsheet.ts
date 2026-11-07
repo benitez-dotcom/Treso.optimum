@@ -71,3 +71,30 @@ export function downloadText(name: string, content: string, type = 'text/csv;cha
   a.click();
   URL.revokeObjectURL(url);
 }
+
+/** Feuille brute (lignes × colonnes) pour les imports libres, comme le modèle de budgets. */
+export async function readMatrix(file: File, sheet?: string): Promise<{ sheets: string[]; sheet: string; matrix: unknown[][] }> {
+  if (/\.xlsx$/i.test(file.name)) {
+    const mod = await import('read-excel-file');
+    const sheets = (await mod.readSheetNames(file)) as string[];
+    const chosen = sheet && sheets.includes(sheet) ? sheet : (sheets.find((s) => /budget/i.test(s)) ?? sheets[0]!);
+    const matrix = (await mod.default(file, { sheet: chosen })) as unknown[][];
+    return { sheets, sheet: chosen, matrix };
+  }
+  if (/\.xls$/i.test(file.name)) throw new Error('Ancien format Excel (.xls) : enregistrez le fichier en .xlsx ou en .csv.');
+  const text = await decode(file);
+  const res = Papa.parse<string[]>(text.replace(/^﻿/, ''), { skipEmptyLines: 'greedy' });
+  const quote = res.errors.find((e) => e.type === 'Quotes');
+  if (quote) throw new Error(csvError(quote));
+  return { sheets: ['CSV'], sheet: 'CSV', matrix: res.data };
+}
+
+/** Télécharge un fichier binaire (classeur XLSX, archive ZIP). */
+export function downloadBlob(name: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

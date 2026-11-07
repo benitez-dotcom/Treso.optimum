@@ -37,6 +37,13 @@
 
   --opt-font-title: 'Poppins', system-ui, sans-serif;
   --opt-font-text: 'Raleway', system-ui, sans-serif;
+  /* Séries catégorielles des graphiques (palette validée : daltonisme, contraste) */
+  --opt-series-1: #2a78d6;
+  --opt-series-2: #eb6834;
+  --opt-series-3: #1baf7a;
+  --opt-series-4: #eda100;
+  --opt-series-5: #e87ba4;
+  --opt-series-6: #008300;
 }
 
 :root[data-theme='dark'] {
@@ -61,6 +68,12 @@
   --opt-text: #f2f2f1;
   --opt-text-muted: #a8b4b7;
   --opt-border: #2a3a3f;
+  --opt-series-1: #3987e5;
+  --opt-series-2: #d95926;
+  --opt-series-3: #199e70;
+  --opt-series-4: #c98500;
+  --opt-series-5: #d55181;
+  --opt-series-6: #008300;
 }
 
 * {

@@ -1,0 +1,275 @@
+/* Analyses (écran 7.12) et rapport PDF imprimable */
+.analyses {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.analyses-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.analyses-toolbar .spacer {
+  flex: 1;
+}
+
+.synthesis {
+  margin: 0;
+}
+
+.analyses-kpis .kpi-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.kpi-q {
+  border: 0;
+  background: transparent;
+  color: var(--opt-text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.kpi-help {
+  max-width: 300px;
+}
+
+.kpi-help p {
+  margin: 0 0 6px;
+}
+
+.analyses-kpis .kpi-value.small {
+  font-size: 17px;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.kpi-sub.good {
+  color: var(--opt-in);
+}
+
+.kpi-sub.bad {
+  color: var(--opt-warning);
+}
+
+.kpi-missing {
+  margin-top: 8px;
+}
+
+.analyses-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px;
+}
+
+.analyses-card .card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.analyses-card h2 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.card-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bar-list,
+.bar-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.6fr) 2fr 90px 56px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 14px;
+}
+
+.bar-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron-space {
+  display: inline-block;
+  width: 22px;
+}
+
+.bar-track {
+  display: block;
+  height: 14px;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: 0 4px 4px 0;
+}
+
+.bar-fill.out {
+  background: var(--opt-petrol);
+}
+
+.bar-fill.in {
+  background: var(--opt-in);
+}
+
+.bar-value,
+.bar-share {
+  text-align: right;
+}
+
+.evolution-chart {
+  width: 100%;
+}
+
+.series-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.series-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.series-swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.gap-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.gap-bar {
+  display: inline-block;
+  width: 70px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--opt-border);
+  overflow: hidden;
+}
+
+.gap-bar > span {
+  display: block;
+  height: 100%;
+}
+
+.gap-bar .ok {
+  background: var(--opt-in);
+}
+
+.gap-bar .ko {
+  background: var(--opt-warning);
+}
+
+.print-only {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .analyses-row {
+    grid-template-columns: 1fr;
+  }
+  .bar-row {
+    grid-template-columns: 1fr 1fr 80px;
+  }
+  .bar-share {
+    display: none;
+  }
+}
+
+/* ───────── Rapport PDF : impression de la page Analyses ───────── */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+  body {
+    background: #fff !important;
+  }
+  .sidebar,
+  .topbar,
+  .no-print,
+  .ant-message,
+  .ant-popover {
+    display: none !important;
+  }
+  .app-shell,
+  .page,
+  .main-col {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .print-only {
+    display: block;
+  }
+  .report-cover {
+    break-after: page;
+    padding-top: 30mm;
+  }
+  .report-cover h1 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 32px;
+    color: #114c5c;
+    margin: 18mm 0 4mm;
+  }
+  .report-company {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .card {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+  .analyses-row {
+    grid-template-columns: 1fr;
+  }
+  .analyses-kpis {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .analyses-kpis .kpi-value {
+    font-size: 20px;
+    white-space: normal;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

@@ -12,3 +12,5 @@ export * from './bank';
 export * from './planning';
 export * from './invoices';
 export * from './daily';
+export * from './analytics';
+export * from './exports';

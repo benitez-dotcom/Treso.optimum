@@ -1,0 +1,70 @@
+/* Exports (7.5) et import des budgets */
+.export-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.export-form section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.export-label {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.export-contents {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.export-contents .ant-checkbox-wrapper {
+  margin-inline-start: 0;
+}
+
+.export-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 24px;
+}
+
+.export-sub .ant-select {
+  min-width: 190px;
+}
+
+.export-format {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.budget-import {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.budget-import p {
+  margin: 0;
+}
+
+.budget-import-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.budget-import-row label {
+  font-weight: 700;
+}
+
+.import-errors {
+  margin: 0;
+  padding-left: 18px;
+}
