@@ -10,6 +10,14 @@ relevés, règles de catégorisation) et les premiers écrans branchés sur l'AP
 Suivez le guide [LANCER-EN-LOCAL.md](LANCER-EN-LOCAL.md) : installer Docker Desktop, puis
 `docker compose up --build` dans le dossier du projet, et ouvrir http://localhost:8080.
 
+## Mettre en ligne (VPS OVH)
+
+Guide pas à pas : [deploy/DEPLOIEMENT-OVH.md](deploy/DEPLOIEMENT-OVH.md). Une fois installé, chaque
+publication sur `main` est testée puis mise en ligne automatiquement par GitHub Actions
+(`.github/workflows/deploy.yml`). En production, l'API refuse de démarrer sans serveur SMTP et
+n'expose jamais les liens des emails ; les inscriptions peuvent être réservées à certains domaines
+(`SIGNUP_ALLOWED_DOMAINS`).
+
 ## Démarrer en local (développeurs)
 
 Prérequis : Node 22, pnpm 10 et PostgreSQL 16 (ou Docker).
@@ -30,7 +38,7 @@ les journaux de l'API. Brancher un fournisseur (Brevo, Postmark) en implémentan
 (`apps/api/src/mailer.ts`) avant la production.
 
 ```bash
-pnpm test        # moteur de calcul (54 tests) + API (31 tests d'intégration sur PostgreSQL)
+pnpm test        # moteur de calcul (54 tests) + API (36 tests d'intégration sur PostgreSQL)
 pnpm typecheck
 pnpm build
 ```

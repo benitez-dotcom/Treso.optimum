@@ -24,6 +24,10 @@ export interface Config {
   exposeEmailLinks: boolean;
   /** Agrégateur bancaire Bridge (https://docs.bridgeapi.io) : absent = seule la banque de démonstration est proposée. */
   bridge: { clientId: string; clientSecret: string; baseUrl: string; version: string } | null;
+  /** Serveur d'envoi d'emails (ex. OVH : ssl0.ovh.net, port 465). Absent = emails journalisés seulement. */
+  smtp: { host: string; port: number; secure: boolean; user: string; pass: string; from: string } | null;
+  /** Domaines email autorisés à créer un compte sans invitation (vide = inscription ouverte). */
+  signupAllowedDomains: string[];
 }
 
 export function loadConfig(overrides: Partial<Config> = {}): Config {
@@ -56,7 +60,27 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
             version: process.env.BRIDGE_VERSION ?? '2025-01-15',
           }
         : null,
+    smtp:
+      process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS
+        ? {
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT ?? 465),
+            secure: (process.env.SMTP_SECURE ?? 'true') === 'true',
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+            from: process.env.SMTP_FROM ?? `Tréso Optimum <${process.env.SMTP_USER}>`,
+          }
+        : null,
+    signupAllowedDomains: (process.env.SIGNUP_ALLOWED_DOMAINS ?? '')
+      .split(',')
+      .map((d) => d.trim().toLowerCase())
+      .filter(Boolean),
     ...overrides,
   };
+  if (config.env === 'production') {
+    // Exposer les liens des emails en ligne permettrait de prendre le contrôle de n'importe quel compte
+    if (config.exposeEmailLinks) throw new Error('EXPOSE_EMAIL_LINKS doit rester à false en production.');
+    if (!config.smtp) throw new Error("SMTP_HOST, SMTP_USER et SMTP_PASS sont requis en production : sans eux, personne ne peut confirmer son adresse.");
+  }
   return config;
 }

@@ -1,0 +1,66 @@
+# À chaque publication sur la branche main : tests, puis mise en ligne sur le VPS.
+# La mise en ligne ne s'active que lorsque les secrets VPS_HOST, VPS_USER et
+# VPS_SSH_KEY sont renseignés dans GitHub (voir deploy/DEPLOIEMENT-OVH.md).
+name: Tests et mise en ligne
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Rôles et bases de test
+        run: psql "postgresql://postgres:postgres@localhost:5432/postgres" -f apps/api/db/init.sql
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm --filter @optimum/web build
+
+  deploy:
+    needs: tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Vérifier que le serveur est configuré
+        id: check
+        env:
+          HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "Secrets VPS absents : mise en ligne ignorée (voir deploy/DEPLOIEMENT-OVH.md)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Mettre à jour le serveur
+        if: steps.check.outputs.ready == 'true'
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 20m
+          script: /opt/treso/deploy/update.sh

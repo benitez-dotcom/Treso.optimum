@@ -16,7 +16,7 @@ export interface TestCtx {
 }
 
 /** Base de test vierge : on supprime toutes les données puis on (ré)applique les migrations. */
-export async function setup(): Promise<TestCtx> {
+export async function setup(overrides: Partial<import('../src/config').Config> = {}): Promise<TestCtx> {
   await migrate(OWNER_URL, 'treso_app', () => undefined);
   const owner = new pg.Client({ connectionString: OWNER_URL });
   await owner.connect();
@@ -24,7 +24,7 @@ export async function setup(): Promise<TestCtx> {
   await owner.end();
   const db = createPool(APP_URL);
   const mailer = new MemoryMailer();
-  const config = loadConfig({ env: 'test', databaseUrl: APP_URL, databaseOwnerUrl: OWNER_URL, exposeEmailLinks: true, refreshReuseGraceMs: 0 });
+  const config = loadConfig({ env: 'test', databaseUrl: APP_URL, databaseOwnerUrl: OWNER_URL, exposeEmailLinks: true, refreshReuseGraceMs: 0, ...overrides });
   const app = await buildApp({ config, db, mailer });
   return { app, db, mailer };
 }

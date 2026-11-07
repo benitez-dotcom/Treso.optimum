@@ -1,0 +1,69 @@
+# Tréso Optimum en production (VPS) : base PostgreSQL, application, serveur web Caddy
+# (HTTPS automatique via Let's Encrypt + mot de passe d'accès pendant la phase de test).
+# Les secrets sont dans deploy/.env, créé par install.sh et jamais versionné.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      OWNER_DB_PASSWORD: ${OWNER_DB_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db-init.sh:/docker-entrypoint-initdb.d/db-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d treso"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://treso_app:${APP_DB_PASSWORD}@db:5432/treso
+      DATABASE_OWNER_URL: postgres://treso_owner:${OWNER_DB_PASSWORD}@db:5432/treso
+      APP_DB_ROLE: treso_app
+      JWT_SECRET: ${JWT_SECRET}
+      APP_URL: https://${DOMAIN}
+      CORS_ORIGINS: https://${DOMAIN}
+      EXPOSE_EMAIL_LINKS: "false"
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      SIGNUP_ALLOWED_DOMAINS: ${SIGNUP_ALLOWED_DOMAINS}
+      BRIDGE_CLIENT_ID: ${BRIDGE_CLIENT_ID:-}
+      BRIDGE_CLIENT_SECRET: ${BRIDGE_CLIENT_SECRET:-}
+
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER}
+      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

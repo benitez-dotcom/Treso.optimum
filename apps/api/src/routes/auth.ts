@@ -86,6 +86,10 @@ export function registerAuthRoutes(app: FastifyInstance) {
 
   app.post('/auth/signup', limit, async (req, reply) => {
     const body = signupBody.parse(req.body);
+    const domain = body.email.split('@')[1]?.toLowerCase() ?? '';
+    if (config.signupAllowedDomains.length && !config.signupAllowedDomains.includes(domain)) {
+      throw new ApiError(403, 'auth.signup_closed', "La création de compte est réservée pour le moment. Demandez une invitation à l'administrateur de votre société.");
+    }
     checkPasswordPolicy(body.password, body.email);
     const passwordHash = await hashPassword(body.password);
     const result = await withTransaction(db, async (tx) => {

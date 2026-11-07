@@ -1,0 +1,22 @@
+# Serveur web : certificat HTTPS automatique pour {$DOMAIN}.
+# Pendant la phase de test, les pages demandent un identifiant et un mot de passe.
+# L'API (/api/*) n'est pas concernée : elle est déjà protégée par la connexion
+# de chaque utilisateur, et les inscriptions sont réservées à vos domaines.
+{$DOMAIN} {
+	encode gzip
+
+	@pages not path /api/* /health
+	basic_auth @pages {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	reverse_proxy app:3000
+}
