@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { Budget, Category, Commitment } from '@optimum/treso-engine';
+import type { Budget, Category } from '@optimum/treso-engine';
 import { audit, loadCompany, requireRole, tenant, WRITERS, type Role } from '../context';
 import { badRequest, forbidden, notFound } from '../errors';
 import { companyDto, type CompanyRow } from './account';
 import { accountDto, connectionDto } from './banking';
 import { toRule, toTransaction } from '../services/operations';
+import { toCommitment, toReconciliation } from '../services/commitments';
 import { indicatorDto, noteDto, scenarioDto } from './plan';
 
 const monthKey = z.string().regex(/^\d{4}-\d{2}-01$/, 'Mois invalide (format AAAA-MM-01).');
@@ -28,25 +29,10 @@ const toCategory = (r: Row): Category => ({
   budgetAtParent: r.budget_at_parent as boolean,
   isVat: r.is_vat as boolean,
   isSystem: r.is_system as boolean,
+  defaultAccountId: (r.default_account_id as string | null) ?? null,
 });
 
 
-const toCommitment = (r: Row): Commitment => ({
-  id: r.id as string,
-  flow: r.flow as Commitment['flow'],
-  counterparty: r.counterparty as string,
-  number: (r.number as string | null) ?? undefined,
-  label: r.label as string,
-  amountInclTax: r.amount_incl_tax as number,
-  amountPaid: r.amount_paid as number,
-  vatRate: r.vat_rate as number,
-  issuedAt: r.issued_at as string,
-  dueAt: r.due_at as string,
-  status: r.status as Commitment['status'],
-  categoryId: (r.category_id as string | null) ?? null,
-  hidden: r.hidden as boolean,
-  accountId: (r.account_id as string | null) ?? null,
-});
 
 export function registerDataRoutes(app: FastifyInstance) {
   /** Toutes les données de la société active, pour hydrater l'application. */
@@ -55,7 +41,7 @@ export function registerDataRoutes(app: FastifyInstance) {
       const q = (sql: string) => tx.query<Row>(sql).then((r) => r.rows);
       const company = (await tx.query<Row>('SELECT * FROM companies WHERE id = $1', [req.company!.id])).rows[0];
       if (!company) throw notFound();
-      const [connections, accounts, categories, transactions, commitments, scenarios, budgets, rules, indicators, notes] = await Promise.all([
+      const [connections, accounts, categories, transactions, commitments, scenarios, budgets, rules, indicators, notes, reconciliations] = await Promise.all([
         q('SELECT * FROM bank_connections ORDER BY created_at'),
         q('SELECT * FROM bank_accounts ORDER BY is_manual, name'),
         q('SELECT * FROM categories ORDER BY flow, position'),
@@ -66,6 +52,7 @@ export function registerDataRoutes(app: FastifyInstance) {
         q('SELECT * FROM rules ORDER BY priority DESC'),
         q('SELECT * FROM indicators ORDER BY position, name'),
         q("SELECT scenario_id, category_id, to_char(month, 'YYYY-MM-DD') AS month, note, updated_at FROM budget_notes"),
+        q('SELECT * FROM reconciliations ORDER BY created_at'),
       ]);
       return {
         company: companyDto(company as unknown as CompanyRow),
@@ -80,6 +67,7 @@ export function registerDataRoutes(app: FastifyInstance) {
         rules: rules.map(toRule),
         indicators: indicators.map(indicatorDto),
         budgetNotes: notes.map(noteDto),
+        reconciliations: reconciliations.map(toReconciliation),
       };
     });
   });
@@ -154,44 +142,6 @@ export function registerDataRoutes(app: FastifyInstance) {
       await audit(tx, req, 'delete', 'scenario', id, { name: s.name }, null);
     });
     return reply.status(204).send();
-  });
-
-  // ───────── Rapprochements ─────────
-  app.post('/reconciliations', { preHandler: loadCompany }, async (req) => {
-    requireRole(req, WRITERS);
-    const body = z.object({ transactionId: z.string(), commitmentId: z.string() }).parse(req.body);
-    return tenant(req, async (tx) => {
-      const t = (await tx.query<Row>('SELECT * FROM transactions WHERE id = $1', [body.transactionId])).rows[0];
-      const c = (await tx.query<Row>('SELECT * FROM commitments WHERE id = $1', [body.commitmentId])).rows[0];
-      if (!t || !c) throw notFound('reconciliation.not_found', 'Opération ou facture introuvable.');
-      const remaining = (c.amount_incl_tax as number) - (c.amount_paid as number);
-      const paid = Math.min(remaining, Math.abs(t.amount as number));
-      if (Math.abs(t.amount as number) > remaining + 0.005) {
-        throw badRequest('reconciliation.amount_exceeded', 'Le total des factures dépasse le montant de ce paiement.');
-      }
-      const newPaid = (c.amount_paid as number) + paid;
-      const status = newPaid >= (c.amount_incl_tax as number) - 0.005 ? 'paid' : 'pending';
-      await tx.query('UPDATE commitments SET amount_paid = $2, status = $3 WHERE id = $1', [c.id, newPaid, status]);
-      await tx.query('UPDATE transactions SET category_id = coalesce(category_id, $2), suggestion = NULL WHERE id = $1', [t.id, c.category_id]);
-      await audit(tx, req, 'create', 'reconciliation', `${t.id}:${c.id}`, null, { paid, status });
-      return { commitmentId: c.id, amountPaid: newPaid, status };
-    });
-  });
-
-  // ───────── Factures (statut, utilisé par « Annuler ») ─────────
-  app.patch('/commitments/:id', { preHandler: loadCompany }, async (req) => {
-    requireRole(req, WRITERS);
-    const { id } = z.object({ id: z.string() }).parse(req.params);
-    const body = z.object({ status: z.enum(['pending', 'paid', 'cancelled']), amountPaid: z.number().min(0) }).partial().strict().parse(req.body);
-    return tenant(req, async (tx) => {
-      const before = (await tx.query<Row>('SELECT status, amount_paid FROM commitments WHERE id = $1', [id])).rows[0];
-      if (!before) throw notFound('commitment.not_found', 'Facture introuvable.');
-      await tx.query('UPDATE commitments SET status = coalesce($2, status), amount_paid = coalesce($3, amount_paid) WHERE id = $1', [
-        id, body.status ?? null, body.amountPaid ?? null,
-      ]);
-      await audit(tx, req, 'update', 'commitment', id, before, body);
-      return { ok: true };
-    });
   });
 
   // ───────── Journal d'activité ─────────

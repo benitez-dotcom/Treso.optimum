@@ -198,7 +198,47 @@ export function buildDemoData(today: IsoDate): DemoData {
   inv('out', 'Bois & Matériaux SA', 'BM-88412', 4_120, 19, 'achats');
   inv('out', 'Quincaillerie Centrale', 'QC-2219', 1_960, 27, 'achats');
   inv('out', 'Atelier Métal', 'AM-551', 3_300, 45, 'achats');
+
+  // Loyer : échéance récurrente saisie à la main (12 mois), et l'avis d'échéance importé du mois prochain (doublon possible)
+  const firstRent = `${addMonths(current, 1).slice(0, 8)}05`;
+  for (let i = 0; i < 12; i++) {
+    const dueAt = `${addMonths(current, 1 + i).slice(0, 8)}05`;
+    commitments.push({
+      id: `inv-loyer-${i + 1}`,
+      flow: 'out',
+      counterparty: 'Foncière Dupont',
+      label: 'Loyer de l’atelier',
+      amountInclTax: 1_850,
+      vatRate: 20,
+      issuedAt: addDaysIso(dueAt, -5),
+      dueAt,
+      status: 'pending',
+      categoryId: 'loyer',
+      hidden: false,
+      accountId: 'pro',
+      seriesId: 'ser-loyer',
+      seriesIndex: i + 1,
+      paymentTerms: 'custom',
+      source: 'manual',
+    });
+  }
+  commitments.push({
+    id: `inv-${++c}`,
+    flow: 'out',
+    counterparty: 'FONCIERE DUPONT',
+    number: `AE-${firstRent.slice(0, 7)}`,
+    label: 'Avis d’échéance loyer',
+    amountInclTax: 1_850,
+    vatRate: 20,
+    issuedAt: addDaysIso(firstRent, -10),
+    dueAt: firstRent,
+    status: 'pending',
+    categoryId: null,
+    hidden: false,
+    source: 'import',
+  });
   inv('out', 'Cabinet comptable', 'HON-1126', 1_440, 24, 'honoraires');
+  for (const x of commitments) x.paymentTerms ??= 'd30';
 
   // Scénarios et budgets : moyenne des 6 derniers mois, sur 12 mois
   const scenarios: Scenario[] = [

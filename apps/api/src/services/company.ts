@@ -55,10 +55,10 @@ export async function seedCompany(tx: Tx, companyId: string, data: DemoData): Pr
   await insertMany(
     tx,
     'commitments',
-    ['company_id', 'id', 'flow', 'counterparty', 'number', 'label', 'amount_incl_tax', 'amount_paid', 'vat_rate', 'issued_at', 'due_at', 'status', 'category_id', 'hidden', 'account_id'],
+    ['company_id', 'id', 'flow', 'counterparty', 'number', 'label', 'amount_incl_tax', 'amount_paid', 'vat_rate', 'issued_at', 'due_at', 'status', 'category_id', 'hidden', 'account_id', 'series_id', 'series_index', 'payment_terms', 'source'],
     data.commitments.map((c) => [
       companyId, c.id, c.flow, c.counterparty, c.number ?? null, c.label, c.amountInclTax, c.amountPaid ?? 0, c.vatRate, c.issuedAt, c.dueAt, c.status,
-      c.categoryId, c.hidden, c.accountId ?? null,
+      c.categoryId, c.hidden, c.accountId ?? null, c.seriesId ?? null, c.seriesIndex ?? null, c.paymentTerms ?? null, c.source ?? 'manual',
     ]),
   );
   await insertMany(tx, 'scenarios', ['company_id', 'id', 'name', 'color', 'is_base'], data.scenarios.map((s) => [companyId, s.id, s.name, s.color, s.isBase]));

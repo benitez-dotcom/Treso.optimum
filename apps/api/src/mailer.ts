@@ -9,6 +9,10 @@ export interface Email {
   subject: string;
   text: string;
   link?: string;
+  /** Adresse de réponse (relance d'un client : l'utilisateur qui l'envoie). */
+  replyTo?: string;
+  /** Texte brut seulement, sans le gabarit Tréso Optimum (message envoyé au nom de la société). */
+  plain?: boolean;
 }
 
 export interface Mailer {
@@ -64,7 +68,7 @@ export function renderEmailHtml(email: Email, appUrl: string): string {
       <tr><td style="background:#114C5C;padding:20px 28px;color:#ffffff;font-family:Poppins,Arial,sans-serif;font-size:22px;font-weight:600">opt<span style="color:#E94F1C">!</span>mum <span style="color:#84ADB7;font-weight:400">tréso</span></td></tr>
       <tr><td style="padding:28px">
         <h1 style="font-family:Poppins,Arial,sans-serif;font-size:20px;margin:0 0 16px">${esc(email.subject)}</h1>
-        <p style="font-size:15px;line-height:1.6;margin:0">${esc(email.text)}</p>
+        <p style="font-size:15px;line-height:1.6;margin:0">${esc(email.text).replace(/\n/g, '<br>')}</p>
         ${button}
       </td></tr>
       <tr><td style="padding:16px 28px;background:#eef3f4;font-size:12px;color:#5c5c5d">Tréso Optimum · <a href="${esc(appUrl)}" style="color:#114C5C">${esc(appUrl.replace(/^https?:\/\//, ''))}</a></td></tr>
@@ -85,8 +89,9 @@ export class SmtpMailer implements Mailer {
       from: this.cfg.from,
       to: email.to,
       subject: email.subject,
+      replyTo: email.replyTo,
       text: `${email.text}${email.link ? `\n\n${email.link}` : ''}`,
-      html: renderEmailHtml(email, this.appUrl),
+      ...(email.plain ? {} : { html: renderEmailHtml(email, this.appUrl) }),
     });
   }
 }

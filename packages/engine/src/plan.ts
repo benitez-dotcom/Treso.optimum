@@ -167,7 +167,7 @@ export function computePlan(input: PlanInput): PlanResult {
 
   if (invoicesEnabled) {
     for (const c of commitments) {
-      if (c.status !== 'pending') continue;
+      if (c.status !== 'pending' || c.replacedBy) continue;
       const remaining = round2(c.amountInclTax - (c.amountPaid ?? 0));
       if (remaining <= 0) continue;
       let month = monthOf(c.dueAt);

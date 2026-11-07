@@ -24,6 +24,8 @@ export interface Category {
   budgetAtParent: boolean;
   isVat?: boolean;
   isSystem?: boolean;
+  /** Compte sur lequel les factures de cette catégorie sont attendues (5.12). */
+  defaultAccountId?: string | null;
 }
 
 export interface Suggestion {
@@ -84,6 +86,30 @@ export interface Commitment {
   hidden: boolean;
   accountId?: string | null;
   seriesId?: string | null;
+  /** Rang dans la série (1 = première échéance). */
+  seriesIndex?: number | null;
+  paymentTerms?: PaymentTerms | null;
+  vatAmount?: number | null;
+  note?: string | null;
+  source?: CommitmentSource;
+  importId?: string | null;
+  /** Échéance manuelle remplacée par une facture importée (doublon résolu). */
+  replacedBy?: string | null;
+  /** « Garder les deux » : ce doublon possible a été écarté. */
+  notDuplicateOf?: string | null;
+  paidAt?: IsoDate | null;
+}
+
+export type CommitmentSource = 'manual' | 'import' | 'ocr' | 'integration';
+export type PaymentTerms = 'on_receipt' | 'd15' | 'd30' | 'd45' | 'd60' | 'end_of_month' | 'custom';
+
+/** Rapprochement d'une opération bancaire et d'une facture (5.11). */
+export interface Reconciliation {
+  id: string;
+  transactionId: string;
+  commitmentId: string;
+  /** Montant affecté à la facture (> 0). */
+  amount: number;
 }
 
 export interface Scenario {

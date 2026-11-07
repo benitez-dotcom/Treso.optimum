@@ -10,3 +10,5 @@ export * from './kpis';
 export * from './format';
 export * from './bank';
 export * from './planning';
+export * from './invoices';
+export * from './daily';

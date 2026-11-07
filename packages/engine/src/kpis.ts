@@ -96,7 +96,7 @@ export function dailyBalances(
     }
   }
   for (const c of commitments) {
-    if (c.status !== 'pending' || c.hidden) continue;
+    if (c.status !== 'pending' || c.hidden || c.replacedBy) continue;
     const remaining = c.amountInclTax - (c.amountPaid ?? 0);
     if (remaining <= 0) continue;
     const d = c.dueAt < today ? today : c.dueAt;

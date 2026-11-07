@@ -13,6 +13,7 @@ import { registerDataRoutes } from './routes/data';
 import { registerBankingRoutes } from './routes/banking';
 import { registerOperationRoutes } from './routes/operations';
 import { registerPlanRoutes } from './routes/plan';
+import { registerInvoiceRoutes } from './routes/invoices';
 
 export interface AppOptions {
   config: Config;
@@ -41,6 +42,7 @@ export async function buildApp({ config, db, mailer, logger = false }: AppOption
       registerBankingRoutes(api);
       registerOperationRoutes(api);
       registerPlanRoutes(api);
+      registerInvoiceRoutes(api);
     },
     { prefix: '/api/v1' },
   );

@@ -184,8 +184,8 @@ describe('sociétés, données et isolation', () => {
     const tx = data.transactions.find((t: { rawLabel: string }) => t.rawLabel.includes('FA-2026-108'));
     const inv = data.commitments.find((c: { number: string }) => c.number === 'FA-2026-108');
     const rec = await inject({ method: 'POST', url: '/api/v1/reconciliations', headers: auth(ownerToken), payload: { transactionId: tx.id, commitmentId: inv.id } });
-    expect(rec.statusCode).toBe(200);
-    expect(rec.json().status).toBe('paid');
+    expect(rec.statusCode).toBe(201);
+    expect(rec.json().commitment.status).toBe('paid');
 
     const uncat = data.transactions.filter((t: { categoryId: string | null; hidden: boolean }) => !t.categoryId && !t.hidden).slice(0, 2);
     const batch = await inject({
