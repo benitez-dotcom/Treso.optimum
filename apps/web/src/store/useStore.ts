@@ -17,6 +17,9 @@ import {
   type Commitment,
   type ForecastMode,
   type MonthKey,
+  type PaymentTerms,
+  type Reconciliation,
+  type SeriesScope,
   type Rule,
   type Scenario,
   type Transaction,
@@ -37,6 +40,7 @@ interface Data {
   rules: Rule[];
   indicators: Indicator[];
   budgetNotes: BudgetNote[];
+  reconciliations: Reconciliation[];
 }
 
 interface State extends Data {
@@ -47,7 +51,7 @@ interface State extends Data {
   today: string;
   settings: CompanySettings;
   theme: ThemePref;
-  undoSnapshot: Pick<Data, 'transactions' | 'commitments' | 'budgets'> | null;
+  undoSnapshot: (Pick<Data, 'transactions' | 'commitments' | 'budgets'> & { reconciliationIds?: string[] }) | null;
 
   load: () => Promise<void>;
   clear: () => void;
@@ -90,9 +94,43 @@ interface State extends Data {
   updateIndicator: (id: string, patch: Partial<Omit<Indicator, 'id' | 'position'>>) => Promise<void>;
   deleteIndicator: (id: string) => Promise<void>;
   reorderIndicators: (ids: string[]) => Promise<void>;
+
+  // ───── Lot 4 : factures et rapprochements ─────
+  createCommitments: (input: NewCommitment) => Promise<Commitment[]>;
+  updateCommitment: (id: string, patch: CommitmentPatch, scope?: SeriesScope) => Promise<Commitment[]>;
+  deleteCommitment: (id: string, scope?: SeriesScope) => Promise<number>;
+  duplicateCommitment: (id: string) => Promise<Commitment>;
+  reconcile: (transactionId: string, commitmentId: string, amount?: number) => Promise<void>;
+  unreconcile: (reconciliationId: string) => Promise<void>;
+  resolveDuplicate: (manualId: string, importedId: string, action: 'replace' | 'keep') => Promise<void>;
+  setCategoryAccount: (categoryId: string, accountId: string | null) => Promise<void>;
 }
 
-const emptyData: Data = { connections: [], accounts: [], categories: [], transactions: [], commitments: [], scenarios: [], budgets: [], rules: [], indicators: [], budgetNotes: [] };
+export interface NewCommitment {
+  flow: 'in' | 'out';
+  counterparty: string;
+  number?: string | null;
+  label?: string;
+  categoryId: string;
+  amountInclTax: number;
+  vatRate: number;
+  vatAmount?: number | null;
+  issuedAt: string;
+  paymentTerms: PaymentTerms;
+  dueAt: string;
+  accountId?: string | null;
+  note?: string | null;
+  repeat?: { intervalMonths: number; count?: number | null; endDate?: string | null } | null;
+}
+
+export type CommitmentPatch = Partial<Omit<NewCommitment, 'flow' | 'repeat'>> & {
+  hidden?: boolean;
+  status?: Commitment['status'];
+  amountPaid?: number;
+  paidAt?: string | null;
+};
+
+const emptyData: Data = { connections: [], accounts: [], categories: [], transactions: [], commitments: [], scenarios: [], budgets: [], rules: [], indicators: [], budgetNotes: [], reconciliations: [] };
 const defaultSettings: CompanySettings = {
   autoHideRefunds: true,
   autoHideInternalTransfers: true,
@@ -177,6 +215,7 @@ export const useStore = create<State>()(
             rules: b.rules,
             indicators: b.indicators,
             budgetNotes: b.budgetNotes ?? [],
+            reconciliations: b.reconciliations ?? [],
             undoSnapshot: null,
             budgetHistory: [],
           });
@@ -395,15 +434,73 @@ export const useStore = create<State>()(
         },
 
         confirmReconciliation: (transactionId, commitmentId) => {
-          snapshot();
-          set((s) => {
-            const inv = s.commitments.find((c) => c.id === commitmentId);
-            return {
-              commitments: s.commitments.map((c) => (c.id === commitmentId ? { ...c, status: 'paid', amountPaid: c.amountInclTax } : c)),
-              transactions: s.transactions.map((t) => (t.id === transactionId ? { ...t, categoryId: inv?.categoryId ?? t.categoryId, suggestion: null } : t)),
-            };
+          void get()
+            .reconcile(transactionId, commitmentId)
+            .catch((err: unknown) => notifyError(err instanceof ApiError ? err.message : 'Le rapprochement a échoué.'));
+        },
+
+        reconcile: async (transactionId, commitmentId, amount) => {
+          const s = get();
+          const snap = { transactions: s.transactions, commitments: s.commitments, budgets: s.budgets };
+          const res = await api<{ reconciliation: Reconciliation; commitment: Commitment; transactionCategoryId: string | null }>('POST', '/reconciliations', {
+            transactionId,
+            commitmentId,
+            amount,
           });
-          sync(api('POST', '/reconciliations', { transactionId, commitmentId }));
+          set((st) => ({
+            reconciliations: [...st.reconciliations, res.reconciliation],
+            commitments: st.commitments.map((c) => (c.id === commitmentId ? res.commitment : c)),
+            transactions: st.transactions.map((t) => (t.id === transactionId ? { ...t, categoryId: res.transactionCategoryId, suggestion: null } : t)),
+            undoSnapshot: { ...snap, reconciliationIds: [res.reconciliation.id] },
+          }));
+        },
+
+        unreconcile: async (reconciliationId) => {
+          const res = await api<{ commitment: Commitment }>('DELETE', `/reconciliations/${encodeURIComponent(reconciliationId)}`);
+          set((st) => ({
+            reconciliations: st.reconciliations.filter((r) => r.id !== reconciliationId),
+            commitments: st.commitments.map((c) => (c.id === res.commitment.id ? res.commitment : c)),
+          }));
+        },
+
+        createCommitments: async (input) => {
+          const res = await api<{ commitments: Commitment[] }>('POST', '/commitments', input);
+          set((st) => ({ commitments: [...st.commitments, ...res.commitments] }));
+          return res.commitments;
+        },
+
+        updateCommitment: async (id, patch, scope = 'one') => {
+          const res = await api<{ commitments: Commitment[] }>('PATCH', `/commitments/${encodeURIComponent(id)}`, { ...patch, scope });
+          const byId = new Map(res.commitments.map((c) => [c.id, c]));
+          set((st) => ({ commitments: st.commitments.map((c) => byId.get(c.id) ?? c) }));
+          return res.commitments;
+        },
+
+        deleteCommitment: async (id, scope = 'one') => {
+          const res = await api<{ deleted: string[] }>('DELETE', `/commitments/${encodeURIComponent(id)}?scope=${scope}`);
+          const gone = new Set(res.deleted);
+          set((st) => ({
+            commitments: st.commitments.filter((c) => !gone.has(c.id)).map((c) => (c.replacedBy && gone.has(c.replacedBy) ? { ...c, replacedBy: null } : c)),
+            reconciliations: st.reconciliations.filter((r) => !gone.has(r.commitmentId)),
+          }));
+          return res.deleted.length;
+        },
+
+        duplicateCommitment: async (id) => {
+          const copy = await api<Commitment>('POST', `/commitments/${encodeURIComponent(id)}/duplicate`);
+          set((st) => ({ commitments: [...st.commitments, copy] }));
+          return copy;
+        },
+
+        resolveDuplicate: async (manualId, importedId, action) => {
+          const res = await api<{ commitments: Commitment[] }>('POST', '/commitments/duplicates/resolve', { manualId, importedId, action });
+          const byId = new Map(res.commitments.map((c) => [c.id, c]));
+          set((st) => ({ commitments: st.commitments.map((c) => byId.get(c.id) ?? c) }));
+        },
+
+        setCategoryAccount: async (categoryId, accountId) => {
+          await api('PATCH', `/categories/${encodeURIComponent(categoryId)}`, { defaultAccountId: accountId });
+          set((st) => ({ categories: st.categories.map((c) => (c.id === categoryId ? { ...c, defaultAccountId: accountId } : c)) }));
         },
 
         /** Annule la dernière action réversible : restaure l'écran et envoie les opérations inverses. */
@@ -421,7 +518,8 @@ export const useStore = create<State>()(
               const b = before.get(t.id)!;
               return { id: t.id, categoryId: b.categoryId, hidden: b.hidden };
             });
-          const commitmentOps = snap.commitments.filter((c) => {
+          const recIds = snap.reconciliationIds ?? [];
+          const commitmentOps = recIds.length ? [] : snap.commitments.filter((c) => {
             const now = s.commitments.find((x) => x.id === c.id);
             return now && (now.status !== c.status || now.amountPaid !== c.amountPaid);
           });
@@ -433,7 +531,9 @@ export const useStore = create<State>()(
             if (!old) budgetOps.push({ ...b, amount: null });
             else if (old.amount !== b.amount) budgetOps.push(old);
           }
-          set({ ...snap, undoSnapshot: null });
+          const { reconciliationIds: _r, ...restore } = snap;
+          set({ ...restore, undoSnapshot: null, reconciliations: s.reconciliations.filter((r) => !recIds.includes(r.id)) });
+          for (const id of recIds) sync(api('DELETE', `/reconciliations/${encodeURIComponent(id)}`));
           if (txOps.length) sync(api('POST', '/transactions/batch', { ops: txOps }));
           for (const c of commitmentOps) sync(api('PATCH', `/commitments/${encodeURIComponent(c.id)}`, { status: c.status, amountPaid: c.amountPaid ?? 0 }));
           if (budgetOps.length) sync(api('PUT', '/budgets', { changes: budgetOps }));

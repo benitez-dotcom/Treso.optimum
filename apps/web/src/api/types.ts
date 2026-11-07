@@ -1,4 +1,4 @@
-import type { BankAccount, BankConnection, Budget, Category, Commitment, ForecastMode, Rule, Scenario, Transaction } from '@optimum/treso-engine';
+import type { BankAccount, BankConnection, Budget, Category, Commitment, ForecastMode, Reconciliation, Rule, Scenario, Transaction } from '@optimum/treso-engine';
 import type { IndicatorFormat } from '@optimum/treso-engine';
 
 export type Role = 'OWNER' | 'ADMIN' | 'EDITOR' | 'ADVISOR' | 'VIEWER';
@@ -58,6 +58,7 @@ export interface Bootstrap {
   rules: Rule[];
   indicators: Indicator[];
   budgetNotes: BudgetNote[];
+  reconciliations: Reconciliation[];
 }
 
 export interface Session {

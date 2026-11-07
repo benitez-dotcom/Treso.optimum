@@ -4,7 +4,8 @@ Logiciel de pilotage de trésorerie pour TPE/PME, aux couleurs de la charte Opti
 Le dépôt contient le **lot 0** (design system), le **lot 1** (API, base de données,
 authentification, sociétés et rôles), le **lot 2** (banques, opérations bancaires, import de
 relevés, règles de catégorisation), le **lot 3** (plan de trésorerie complet, scénarios,
-assistant prévisionnel, indicateurs) et les écrans branchés sur l'API.
+assistant prévisionnel, indicateurs), le **lot 4** (factures, rapprochements, vue au jour le jour,
+alertes) et les écrans branchés sur l'API.
 
 ## Essayer sans être développeur
 
@@ -136,12 +137,37 @@ Principales routes (`/api/v1`) : `auth/*`, `me`, `companies`, `companies/current
 Mesures (navigateur, mode développement) : plan de 24 mois affiché en ~0,4 s ; 16 catégories × 12 mois
 saisies au clavier sans souris ; collage Excel 12 × 20 couvert par les tests du moteur.
 
+### Lot 4 : factures, rapprochements, au jour le jour, alertes
+
+- **Factures clients et fournisseurs** (`/factures/clients`, `/factures/fournisseurs`) : 3 KPI
+  cliquables, vues (À venir, En retard, Payées, Rapprochements, Doublons), catégorie en place,
+  compte attendu (cascade 5.12) sous chaque ligne, bandeau « Choisir le compte » par défaut.
+- **Saisie** dans un panneau : tiers avec autocomplétion (catégorie, TVA, délai et compte habituels
+  pré-remplis), TVA calculée, délai de paiement ↔ échéance, **échéances récurrentes** (1 à 120),
+  modification ou suppression « cette échéance » / « et les suivantes ».
+- **Actions** : marquer payée, **rapprocher** d'un ou plusieurs paiements (candidats triés par
+  score, paiements partiels, « Le total des factures dépasse le montant de ce paiement »),
+  annuler un rapprochement, décaler, dupliquer, exclure des totaux, supprimer, **relancer le
+  client** par email.
+- **Doublons** : échéance saisie à la main vs facture importée, « Remplacer » ou « Garder les deux ».
+- **Import CSV / XLSX** en 3 étapes (correspondance mémorisée, erreurs par ligne, catégories reconnues).
+- **Au jour le jour** (`/journalier`) : comptes, période, jour / semaine / mois, comparaison de
+  comptes, budgets non couverts en option, 4 KPI, graphique avec zoom, simulation d'un report
+  d'échéance puis enregistrement.
+- **Alertes** (cloche) : trésorerie sous le seuil dans les 60 jours, factures clients en retard de
+  plus de 7 jours, budget dépassé de plus de 10 %, banque à resynchroniser depuis plus de 24 h.
+
+> Non inclus : dépôt de factures avec lecture automatique (OCR), connexion aux logiciels de
+> facturation, envoi quotidien des alertes par email.
+
 ### Moteur de calcul (`packages/engine`)
 
 | Fichier | Règles |
 | --- | --- |
 | `plan.ts` | 5.1 agrégation, 5.2 scénarios calques, 5.3 prévision (Budget / Projection, budget global), 5.4 soldes, 5.5 factures en retard |
 | `budgets.ts` | 5.7 répétition d'une valeur, assistant « partir de mon historique » |
+| `invoices.ts` | Délais, séries récurrentes, statuts, 5.11 rapprochements et scores, 5.12 compte d'une facture, doublons, import, relance |
+| `daily.ts` | Projection au jour le jour, regroupement semaine / mois, KPI, 5.13 alertes |
 | `planning.ts` | Saisie et formules de cellule, collage Excel, recopie, hausse en %, périodes (24 mois max), assistant (historique, croissance, événements, emprunt), comparaison de scénarios, TVA en budgets |
 | `indicators.ts` | 5.6 indicateurs personnalisés : parseur arithmétique, sans `eval` |
 | `vat.ts` | 5.8 estimation de la TVA |
@@ -151,9 +177,8 @@ saisies au clavier sans souris ; collage Excel 12 × 20 couvert par les tests du
 
 ## Prochaines étapes
 
-1. Lot 4 : factures (manuelles, récurrentes, import), rapprochements, vue au jour le jour, alertes.
-2. Lot 5 : analyses, exports XLSX/CSV, import des budgets depuis Excel.
-3. Passkeys et connexion Google / Microsoft (prévues au cahier des charges, non incluses ici).
-4. Fournisseur d'emails réel et vérification des mots de passe compromis (Have I Been Pwned).
+1. Lot 5 : analyses, exports XLSX/CSV, import des budgets depuis Excel.
+2. Passkeys et connexion Google / Microsoft (prévues au cahier des charges, non incluses ici).
+3. Fournisseur d'emails réel et vérification des mots de passe compromis (Have I Been Pwned).
 
 Le logo « optimum tréso » est une reconstitution provisoire : à remplacer par le fichier du graphiste.

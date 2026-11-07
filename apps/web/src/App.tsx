@@ -9,6 +9,8 @@ import { AppLayout } from './layout/AppLayout';
 import { HomePage } from './pages/HomePage';
 import { PlanPage } from './pages/plan/PlanPage';
 import { IndicatorsPage } from './pages/indicators/IndicatorsPage';
+import { InvoicesPage } from './pages/invoices/InvoicesPage';
+import { DailyPage } from './pages/daily/DailyPage';
 import { InboxPage } from './pages/InboxPage';
 import { ComingSoon } from './pages/ComingSoon';
 import { SettingsPage } from './pages/SettingsPage';
@@ -53,6 +55,9 @@ const router = createBrowserRouter([
           { path: 'plan', element: <PlanPage /> },
           { path: 'operations', element: <OperationsPage /> },
           { path: 'indicateurs', element: <IndicatorsPage /> },
+          { path: 'journalier', element: <DailyPage /> },
+          { path: 'factures/clients', element: <InvoicesPage key="in" flow="in" /> },
+          { path: 'factures/fournisseurs', element: <InvoicesPage key="out" flow="out" /> },
           { path: 'parametres', element: <SettingsPage /> },
           { path: 'parametres/banques/retour', element: <BankCallbackPage /> },
           { path: 'societes', element: <CompaniesPage /> },

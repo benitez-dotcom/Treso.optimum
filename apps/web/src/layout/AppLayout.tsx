@@ -4,7 +4,6 @@ import { Dropdown, Input, Tooltip } from 'antd';
 import {
   AppstoreOutlined,
   BarChartOutlined,
-  BellOutlined,
   CalendarOutlined,
   FileTextOutlined,
   FundOutlined,
@@ -17,6 +16,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { useStore, type ThemePref } from '../store/useStore';
+import { AlertsBell } from './AlertsBell';
 import { useSession } from '../api/session';
 import { useInbox } from '../store/selectors';
 import { DecisionDot, Logo } from './Brand';
@@ -34,6 +34,9 @@ const titles: Record<string, string> = {
   '/a-traiter': 'À traiter',
   '/plan': 'Plan de trésorerie',
   '/indicateurs': 'Indicateurs',
+  '/factures/clients': 'Factures clients',
+  '/factures/fournisseurs': 'Factures fournisseurs',
+  '/journalier': 'Au jour le jour',
   '/operations': 'Opérations bancaires',
   '/parametres': 'Paramètres',
   '/societes': 'Mes sociétés',
@@ -232,9 +235,7 @@ export function AppLayout() {
               Synchronisé il y a 12 min
             </button>
           </Tooltip>
-          <button type="button" className="icon-btn" aria-label="Notifications">
-            <BellOutlined />
-          </button>
+          <AlertsBell />
         </header>
         <main className="page">
           <Outlet />
