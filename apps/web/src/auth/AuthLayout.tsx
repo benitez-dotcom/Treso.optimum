@@ -19,7 +19,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           ))}
         </div>
         <div className="auth-brand-text">
-          <Logo size={40} />
+          <Logo size={30} />
           <p>
             La solution est <span className="auth-accent">là.</span>
           </p>
