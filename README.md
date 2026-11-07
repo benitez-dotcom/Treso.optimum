@@ -180,6 +180,20 @@ saisies au clavier sans souris ; collage Excel 12 × 20 couvert par les tests du
 
 > Non inclus : exports programmés par email et génération du PDF côté serveur.
 
+### Catégories (Paramètres › Catégories)
+
+- Deux arbres (encaissements, décaissements) : icône et couleur, type (chiffre d'affaires,
+  achats, frais généraux, masse salariale), TVA, nombre d'opérations sur 12 mois.
+- **Glisser-déposer** pour réordonner ou changer de parent ; si des budgets sont concernés,
+  aperçu (« Les budgets de Loyer (12 mois) seront regroupés dans Frais généraux… ») et choix
+  « Conserver en additionnant » / « Supprimer les budgets ».
+- Panneau d'édition : nom, icône, couleur, note, TVA, type (hérité du parent sinon), compte par
+  défaut des factures (avec report sur les factures non payées), budget global au niveau du parent,
+  sous-catégorie, **fusion** et **suppression avec déplacement** (opérations, factures, règles,
+  budgets additionnés, sous-catégories).
+- **Modèles sectoriels** (Commerce, Services, BTP, Restauration, Profession libérale) : ajoutent
+  les catégories manquantes, sans rien supprimer.
+
 ### Moteur de calcul (`packages/engine`)
 
 | Fichier | Règles |
@@ -190,6 +204,7 @@ saisies au clavier sans souris ; collage Excel 12 × 20 couvert par les tests du
 | `daily.ts` | Projection au jour le jour, regroupement semaine / mois, KPI, 5.13 alertes |
 | `analytics.ts` | 5.9 KPI sur une période, période précédente, répartition par catégorie, prévu vs réalisé, tiers |
 | `exports.ts` | Contenus d'export (onglets typés), CSV, modèle et import des budgets |
+| `categories.ts` | Déplacements et conséquences sur les budgets, fusion, modèles sectoriels |
 | `planning.ts` | Saisie et formules de cellule, collage Excel, recopie, hausse en %, périodes (24 mois max), assistant (historique, croissance, événements, emprunt), comparaison de scénarios, TVA en budgets |
 | `indicators.ts` | 5.6 indicateurs personnalisés : parseur arithmétique, sans `eval` |
 | `vat.ts` | 5.8 estimation de la TVA |
@@ -199,9 +214,8 @@ saisies au clavier sans souris ; collage Excel 12 × 20 couvert par les tests du
 
 ## Prochaines étapes
 
-1. Écran Catégories (création, nature, TVA, compte par défaut) : indispensable pour les KPI.
-2. Lot 6 : abonnement, intégrations, conseiller, pré-comptabilité.
-3. Passkeys et connexion Google / Microsoft (prévues au cahier des charges, non incluses ici).
-4. Fournisseur d'emails réel et vérification des mots de passe compromis (Have I Been Pwned).
+1. Lot 6 : abonnement, intégrations, conseiller, pré-comptabilité.
+2. Passkeys et connexion Google / Microsoft (prévues au cahier des charges, non incluses ici).
+3. Fournisseur d'emails réel et vérification des mots de passe compromis (Have I Been Pwned).
 
 Le logo « optimum tréso » est une reconstitution provisoire : à remplacer par le fichier du graphiste.

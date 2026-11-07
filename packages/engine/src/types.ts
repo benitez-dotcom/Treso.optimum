@@ -26,6 +26,10 @@ export interface Category {
   isSystem?: boolean;
   /** Compte sur lequel les factures de cette catégorie sont attendues (5.12). */
   defaultAccountId?: string | null;
+  /** Écran Catégories (7.9) : icône et couleur choisies dans une bibliothèque, note libre. */
+  icon?: string | null;
+  color?: string | null;
+  note?: string | null;
 }
 
 export interface Suggestion {

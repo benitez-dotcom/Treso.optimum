@@ -388,18 +388,4 @@ export function registerInvoiceRoutes(app: FastifyInstance) {
     await mailer.send({ to: body.to, subject: body.subject, text: body.body, replyTo: info.replyTo, plain: true });
     return { sent: true, message: `Relance envoyée à ${body.to}.` };
   });
-
-  // ───────── Compte par défaut d'une catégorie (5.12) ─────────
-  app.patch('/categories/:id', { preHandler: loadCompany }, async (req) => {
-    requireRole(req, WRITERS);
-    const { id } = z.object({ id: z.string() }).parse(req.params);
-    const body = z.object({ defaultAccountId: z.string().nullable() }).strict().parse(req.body);
-    return tenant(req, async (tx) => {
-      if (body.defaultAccountId) await checkRefs(tx, 'in', { accountId: body.defaultAccountId });
-      const r = await tx.query('UPDATE categories SET default_account_id = $2 WHERE id = $1', [id, body.defaultAccountId]);
-      if (!r.rowCount) throw notFound('category.not_found', 'Catégorie introuvable.');
-      await audit(tx, req, 'update', 'category', id, null, body);
-      return { id, defaultAccountId: body.defaultAccountId };
-    });
-  });
 }

@@ -18,7 +18,7 @@ const SCENARIO_WRITERS: Role[] = [...WRITERS, 'ADVISOR'];
 
 type Row = Record<string, unknown>;
 
-const toCategory = (r: Row): Category => ({
+export const toCategory = (r: Row): Category => ({
   id: r.id as string,
   name: r.name as string,
   flow: r.flow as Category['flow'],
@@ -30,6 +30,9 @@ const toCategory = (r: Row): Category => ({
   isVat: r.is_vat as boolean,
   isSystem: r.is_system as boolean,
   defaultAccountId: (r.default_account_id as string | null) ?? null,
+  icon: (r.icon as string | null) ?? null,
+  color: (r.color as string | null) ?? null,
+  note: (r.note as string | null) ?? null,
 });
 
 

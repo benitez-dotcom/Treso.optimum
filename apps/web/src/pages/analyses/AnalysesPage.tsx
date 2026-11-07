@@ -8,6 +8,7 @@ import { Button, DatePicker, Empty, Popover, Select, Switch, Table, Tooltip as A
 import { CaretDownOutlined, CaretRightOutlined, ExportOutlined, FilePdfOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import dayjs from 'dayjs';
+import { Link } from 'react-router-dom';
 import {
   addMonths,
   analysisKpis,
@@ -177,7 +178,9 @@ export function AnalysesPage() {
                     <div className="kpi-help">
                       <p>{d.help}</p>
                       {d.config && (
-                        <p className="muted">{d.config}</p>
+                        <p className="muted">
+                          {d.config} <Link to="/parametres?onglet=categories">Configurer</Link>
+                        </p>
                       )}
                     </div>
                   }

@@ -104,6 +104,14 @@ interface State extends Data {
   unreconcile: (reconciliationId: string) => Promise<void>;
   resolveDuplicate: (manualId: string, importedId: string, action: 'replace' | 'keep') => Promise<void>;
   setCategoryAccount: (categoryId: string, accountId: string | null) => Promise<void>;
+
+  // ───── Catégories (7.9) ─────
+  createCategory: (input: Partial<Category> & Pick<Category, 'name' | 'flow'>) => Promise<Category>;
+  updateCategory: (id: string, patch: Partial<Pick<Category, 'name' | 'kind' | 'vatRate' | 'icon' | 'color' | 'note' | 'budgetAtParent' | 'defaultAccountId'>> & { applyAccountToOpenInvoices?: boolean }) => Promise<number>;
+  moveCategory: (id: string, parentId: string | null, index: number, budgets?: 'sum' | 'delete') => Promise<void>;
+  mergeCategory: (id: string, targetId: string) => Promise<void>;
+  deleteCategory: (id: string, moveTo?: string) => Promise<void>;
+  applyCategoryTemplate: (key: string) => Promise<number>;
 }
 
 export interface NewCommitment {
@@ -496,6 +504,42 @@ export const useStore = create<State>()(
           const res = await api<{ commitments: Commitment[] }>('POST', '/commitments/duplicates/resolve', { manualId, importedId, action });
           const byId = new Map(res.commitments.map((c) => [c.id, c]));
           set((st) => ({ commitments: st.commitments.map((c) => byId.get(c.id) ?? c) }));
+        },
+
+        createCategory: async (input) => {
+          const created = await api<Category>('POST', '/categories', input);
+          set((st) => ({ categories: [...st.categories, created] }));
+          return created;
+        },
+
+        updateCategory: async (id, patch) => {
+          const r = await api<Category & { invoicesUpdated: number }>('PATCH', `/categories/${encodeURIComponent(id)}`, patch);
+          const { invoicesUpdated, ...cat } = r;
+          set((st) => ({ categories: st.categories.map((c) => (c.id === id ? cat : c)) }));
+          // Le compte reporté sur les factures se relit depuis le serveur
+          if (invoicesUpdated) await get().load();
+          return invoicesUpdated;
+        },
+
+        moveCategory: async (id, parentId, index, budgets) => {
+          await api('POST', `/categories/${encodeURIComponent(id)}/move`, { parentId, index, budgets });
+          await get().load();
+        },
+
+        mergeCategory: async (id, targetId) => {
+          await api('POST', `/categories/${encodeURIComponent(id)}/merge`, { targetId });
+          await get().load();
+        },
+
+        deleteCategory: async (id, moveTo) => {
+          await api('DELETE', `/categories/${encodeURIComponent(id)}${moveTo ? `?moveTo=${encodeURIComponent(moveTo)}` : ''}`);
+          await get().load();
+        },
+
+        applyCategoryTemplate: async (key) => {
+          const r = await api<{ added: Category[] }>('POST', `/categories/templates/${encodeURIComponent(key)}`);
+          set((st) => ({ categories: [...st.categories, ...r.added] }));
+          return r.added.length;
         },
 
         setCategoryAccount: async (categoryId, accountId) => {

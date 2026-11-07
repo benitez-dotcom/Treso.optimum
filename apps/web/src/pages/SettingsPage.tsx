@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CategoriesTab } from './settings/CategoriesTab';
 import { Alert, App, Button, Form, Input, InputNumber, Modal, Popconfirm, Radio, Select, Switch, Table, Tabs, Tag } from 'antd';
 import { formatDate } from '@optimum/treso-engine';
 import { api, ApiError } from '../api/client';
@@ -398,6 +399,7 @@ export function SettingsPage() {
           { key: 'societe', label: 'Société', children: <CompanyTab /> },
           { key: 'profil', label: 'Mon profil', children: <ProfileTab /> },
           { key: 'utilisateurs', label: 'Utilisateurs', children: <UsersTab /> },
+          { key: 'categories', label: 'Catégories', children: <CategoriesTab /> },
           { key: 'banques', label: 'Banques', children: <BanksTab /> },
           { key: 'regles', label: 'Règles', children: <RulesTab /> },
           { key: 'imports', label: 'Imports', children: <ImportsTab /> },
