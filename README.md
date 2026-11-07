@@ -194,6 +194,20 @@ saisies au clavier sans souris ; collage Excel 12 × 20 couvert par les tests du
 - **Modèles sectoriels** (Commerce, Services, BTP, Restauration, Profession libérale) : ajoutent
   les catégories manquantes, sans rien supprimer.
 
+### Lot 6 (en cours) : pré-comptabilité
+
+- **Pré-comptabilité** (`/precompta`) : flux À traiter → À vérifier → Prêtes à envoyer → Envoyées,
+  écritures proposées depuis les factures (journaux VT / HA : tiers 411 / 401, produit ou charge HT,
+  TVA collectée / déductible par taux) et les opérations bancaires (journal par banque, contre le
+  tiers si la facture est rapprochée), vérification avec la pièce à côté, lignes modifiables,
+  **équilibre contrôlé en direct : une écriture déséquilibrée ne peut pas être validée**,
+  numérotation continue par journal, refus avec motif, envoi.
+- **Configuration** : logiciel comptable, plan de comptes (PCG par défaut, un 512 par banque),
+  comptes de TVA par taux, correspondances catégorie ↔ compte proposées automatiquement, journaux.
+- **Export FEC** (article A47 A-1 du LPF) : 18 colonnes, contrôle de conformité bloquant avant
+  téléchargement (SIREN, équilibre, numérotation, validation), archive ZIP.
+- SIREN modifiable dans Paramètres › Société.
+
 ### Moteur de calcul (`packages/engine`)
 
 | Fichier | Règles |
@@ -205,6 +219,7 @@ saisies au clavier sans souris ; collage Excel 12 × 20 couvert par les tests du
 | `analytics.ts` | 5.9 KPI sur une période, période précédente, répartition par catégorie, prévu vs réalisé, tiers |
 | `exports.ts` | Contenus d'export (onglets typés), CSV, modèle et import des budgets |
 | `categories.ts` | Déplacements et conséquences sur les budgets, fusion, modèles sectoriels |
+| `precompta.ts` | Plan comptable, correspondances, écritures depuis factures et opérations, équilibre, FEC |
 | `planning.ts` | Saisie et formules de cellule, collage Excel, recopie, hausse en %, périodes (24 mois max), assistant (historique, croissance, événements, emprunt), comparaison de scénarios, TVA en budgets |
 | `indicators.ts` | 5.6 indicateurs personnalisés : parseur arithmétique, sans `eval` |
 | `vat.ts` | 5.8 estimation de la TVA |

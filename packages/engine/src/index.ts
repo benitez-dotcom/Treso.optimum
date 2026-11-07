@@ -15,3 +15,4 @@ export * from './daily';
 export * from './analytics';
 export * from './exports';
 export * from './categories';
+export * from './precompta';

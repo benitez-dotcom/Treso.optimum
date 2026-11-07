@@ -4,6 +4,7 @@ import { Dropdown, Input, Tooltip } from 'antd';
 import {
   AppstoreOutlined,
   BarChartOutlined,
+  AuditOutlined,
   CalendarOutlined,
   FileTextOutlined,
   FundOutlined,
@@ -35,6 +36,7 @@ const titles: Record<string, string> = {
   '/plan': 'Plan de trésorerie',
   '/indicateurs': 'Indicateurs',
   '/analyses': 'Analyses',
+  '/precompta': 'Pré-comptabilité',
   '/factures/clients': 'Factures clients',
   '/factures/fournisseurs': 'Factures fournisseurs',
   '/journalier': 'Au jour le jour',
@@ -110,6 +112,7 @@ export function AppLayout() {
           badge: overdueCount > 0 && <span className="nav-pill">{overdueCount}</span>,
         },
         { to: '/factures/fournisseurs', label: 'Factures fournisseurs', icon: <FileTextOutlined /> },
+        { to: '/precompta', label: 'Pré-comptabilité', icon: <AuditOutlined /> },
       ],
     },
     {

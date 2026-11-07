@@ -14,6 +14,7 @@ import { registerBankingRoutes } from './routes/banking';
 import { registerOperationRoutes } from './routes/operations';
 import { registerPlanRoutes } from './routes/plan';
 import { registerCategoryRoutes } from './routes/categories';
+import { registerPrecomptaRoutes } from './routes/precompta';
 import { registerInvoiceRoutes } from './routes/invoices';
 
 export interface AppOptions {
@@ -44,6 +45,7 @@ export async function buildApp({ config, db, mailer, logger = false }: AppOption
       registerOperationRoutes(api);
       registerPlanRoutes(api);
       registerCategoryRoutes(api);
+      registerPrecomptaRoutes(api);
       registerInvoiceRoutes(api);
     },
     { prefix: '/api/v1' },

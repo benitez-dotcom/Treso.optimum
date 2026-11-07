@@ -57,7 +57,7 @@ interface State extends Data {
   clear: () => void;
   setTheme: (t: ThemePref) => void;
   setForecastMode: (m: ForecastMode) => void;
-  updateSettings: (patch: Partial<CompanySettings> & { name?: string }) => Promise<void>;
+  updateSettings: (patch: Partial<CompanySettings> & { name?: string } & { siren?: string | null }) => Promise<void>;
   setBudget: (scenarioId: string, categoryId: string, month: MonthKey, amount: number | null) => void;
   repeatBudget: (scenarioId: string, categoryId: string, month: MonthKey, amount: number, every: number, duration: number) => void;
   addScenario: (name: string, color: string, copyFrom?: string, description?: string) => Promise<string>;

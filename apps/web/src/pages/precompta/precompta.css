@@ -1,0 +1,257 @@
+/* Pré-comptabilité (7.16) */
+.precompta-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.precompta-toolbar,
+.config-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.precompta-toolbar .spacer,
+.drawer-footer .spacer {
+  flex: 1;
+}
+
+.precompta-kpis {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.kanban-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--opt-radius-card);
+  background: var(--opt-surface);
+  border: 1px solid var(--opt-border);
+  min-height: 220px;
+}
+
+.kanban-col header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kanban-col h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.kanban-col .count {
+  min-width: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--opt-petrol-50);
+  color: var(--opt-petrol);
+  font-weight: 700;
+  text-align: center;
+}
+
+.kanban-col p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.entry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.entry-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--opt-border);
+  border-radius: var(--opt-radius-control);
+  background: var(--opt-canvas);
+  text-align: left;
+  font: inherit;
+  color: var(--opt-text);
+  cursor: pointer;
+}
+
+.entry-card:hover,
+.entry-card:focus-visible {
+  border-color: var(--opt-petrol);
+}
+
+.entry-card-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.entry-card .num {
+  align-self: flex-end;
+  font-size: 13px;
+}
+
+.entry-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.entry-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+}
+
+.entry-source {
+  padding: 16px;
+  border-radius: var(--opt-radius-card);
+  background: var(--opt-canvas);
+  border: 1px solid var(--opt-border);
+  align-self: start;
+}
+
+.entry-source h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.entry-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.entry-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.entry-head label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.entry-head label.grow {
+  flex: 1;
+  min-width: 200px;
+}
+
+.entry-lines {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.entry-lines th,
+.entry-lines td {
+  padding: 6px;
+  border-bottom: 1px solid var(--opt-border);
+  vertical-align: top;
+  text-align: left;
+}
+
+.entry-lines th.num,
+.entry-lines td.num {
+  text-align: right;
+}
+
+.entry-lines .ant-input-number {
+  width: 120px;
+}
+
+.acc-label {
+  font-size: 11px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.balance {
+  padding: 10px 12px;
+  border-radius: var(--opt-radius-control);
+  font-weight: 700;
+}
+
+.balance.ok {
+  background: var(--opt-in-bg);
+  color: var(--opt-in);
+}
+
+.balance.ko {
+  background: var(--opt-warning-bg);
+  color: var(--opt-warning);
+}
+
+.config-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 980px;
+}
+
+.config-pane .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.config-pane .field .ant-radio-wrapper {
+  font-weight: 400;
+}
+
+.vat-table th,
+.vat-table td {
+  text-align: left !important;
+  padding: 8px !important;
+}
+
+.fec-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fec-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .kanban {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .kanban,
+  .entry-layout {
+    grid-template-columns: 1fr;
+  }
+}

@@ -39,9 +39,20 @@ function CompanyTab() {
   return (
     <div className="settings-section">
       {!admin && <Alert type="info" showIcon message="Seuls les administrateurs peuvent modifier ces réglages." />}
-      <Form layout="vertical" disabled={!admin} requiredMark={false} initialValues={{ name: company.name, ...settings }}>
+      <Form layout="vertical" disabled={!admin} requiredMark={false} initialValues={{ name: company.name, siren: company.siren ?? '', ...settings }}>
         <Form.Item name="name" label="Nom de l'entreprise" rules={[{ required: true }]}>
           <Input onBlur={(e) => e.target.value.trim() && e.target.value !== company.name && save({ name: e.target.value.trim() })} />
+        </Form.Item>
+        <Form.Item name="siren" label="SIREN" extra="9 chiffres. Indispensable pour l’export FEC de la pré-comptabilité." rules={[{ pattern: /^\d{9}$/, message: 'Le SIREN compte 9 chiffres.' }]}>
+          <Input
+            inputMode="numeric"
+            maxLength={9}
+            style={{ maxWidth: 200 }}
+            onBlur={(e) => {
+              const v = e.target.value.replace(/\s/g, '');
+              if (v !== (company.siren ?? '') && (v === '' || /^\d{9}$/.test(v))) save({ siren: v || null });
+            }}
+          />
         </Form.Item>
         <Form.Item
           name="minCashThreshold"

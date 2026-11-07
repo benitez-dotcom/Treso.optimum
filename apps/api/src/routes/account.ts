@@ -33,6 +33,12 @@ const settingsBody = z
     autoHideRefunds: z.boolean(),
     autoHideInternalTransfers: z.boolean(),
     fiscalYearStartMonth: z.number().int().min(1).max(12),
+    siren: z
+      .string()
+      .trim()
+      .regex(/^\d{9}$/, 'Le SIREN compte 9 chiffres.')
+      .nullable()
+      .or(z.literal('').transform(() => null)),
   })
   .partial()
   .strict();
@@ -48,6 +54,7 @@ const settingsColumns: Record<keyof z.infer<typeof settingsBody>, string> = {
   autoHideRefunds: 'auto_hide_refunds',
   autoHideInternalTransfers: 'auto_hide_internal_transfers',
   fiscalYearStartMonth: 'fiscal_year_start_month',
+  siren: 'siren',
 };
 
 export interface CompanyRow {
