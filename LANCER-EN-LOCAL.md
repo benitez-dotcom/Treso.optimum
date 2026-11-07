@@ -43,6 +43,8 @@ Ce guide ne demande aucune compétence de développeur. Il faut une seule instal
    l'écran (encadré « Mode développement »). Cliquez dessus.
 3. Choisissez **Données de démonstration** pour explorer avec « Atelier Démo », ou
    **Mon entreprise** pour partir d'une société vide.
+4. Pour essayer la partie bancaire : **Paramètres › Banques › Connecter la banque de
+   démonstration**, puis ouvrez **Opérations bancaires**.
 
 ## Arrêter et relancer
 
@@ -57,6 +59,7 @@ Ce guide ne demande aucune compétence de développeur. Il faut une seule instal
 | Message | Solution |
 | --- | --- |
 | `docker: command not found` ou « commande introuvable » | Docker Desktop n'est pas installé ou pas ouvert. Ouvrez-le, attendez qu'il démarre, puis relancez la commande dans un nouveau terminal. |
+| Windows : « Le terme docker n'est pas reconnu… » | Docker Desktop n'est pas démarré, ou le terminal a été ouvert avant la fin de l'installation. Lancez Docker Desktop (menu Démarrer), attendez « Engine running », **fermez le terminal et rouvrez-en un** dans le dossier, puis vérifiez avec `docker --version`. Si rien ne s'affiche, réinstallez Docker Desktop (Windows – AMD64) et redémarrez le PC. |
 | `Cannot connect to the Docker daemon` | Docker Desktop est installé mais pas démarré : ouvrez-le. |
 | `port is already allocated` (5432 ou 8080) | Un autre logiciel utilise ce port (souvent un PostgreSQL déjà installé). Fermez-le, ou envoyez le message complet à votre développeur. |
 | La page http://localhost:8080 ne s'affiche pas | Attendez la ligne `Server listening at` dans le terminal, puis rechargez la page. |

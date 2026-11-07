@@ -1,4 +1,4 @@
-import type { BankAccount, Budget, Category, Commitment, ForecastMode, Rule, Scenario, Transaction } from '@optimum/treso-engine';
+import type { BankAccount, BankConnection, Budget, Category, Commitment, ForecastMode, Rule, Scenario, Transaction } from '@optimum/treso-engine';
 import type { Indicator } from '@optimum/demo-data';
 
 export type Role = 'OWNER' | 'ADMIN' | 'EDITOR' | 'ADVISOR' | 'VIEWER';
@@ -29,6 +29,8 @@ export interface CompanySettings {
   vatEnabled: boolean;
   vatRegime: 'monthly' | 'quarterly';
   overdueInPlan: 'current_month' | 'due_month';
+  autoHideRefunds: boolean;
+  autoHideInternalTransfers: boolean;
 }
 
 export interface Company {
@@ -45,6 +47,7 @@ export interface Company {
 export interface Bootstrap {
   company: Company;
   role: Role;
+  connections: BankConnection[];
   accounts: BankAccount[];
   categories: Category[];
   transactions: Transaction[];
@@ -87,3 +90,15 @@ export const roleOptions: { value: Exclude<Role, 'OWNER'>; label: string; help: 
 export const canWrite = (role: Role | null | undefined) => role === 'OWNER' || role === 'ADMIN' || role === 'EDITOR';
 export const canAdmin = (role: Role | null | undefined) => role === 'OWNER' || role === 'ADMIN';
 export const canEditScenarios = (role: Role | null | undefined) => canWrite(role) || role === 'ADVISOR';
+
+export interface ImportEntry {
+  id: string;
+  type: 'transactions' | 'commitments' | 'budgets';
+  fileName: string;
+  rowsCount: number;
+  createdAt: string;
+  author: string | null;
+}
+
+/** Nom affiché d'un compte : nom personnalisé, sinon nom fourni par la banque. */
+export const accountLabel = (a: Pick<BankAccount, 'name' | 'displayName'>) => a.displayName || a.name;

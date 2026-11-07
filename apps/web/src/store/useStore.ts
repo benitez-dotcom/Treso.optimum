@@ -11,6 +11,7 @@ import {
   todayInParis,
   upsertBudgets,
   type BankAccount,
+  type BankConnection,
   type Budget,
   type Category,
   type Commitment,
@@ -27,6 +28,7 @@ import { canAdmin, type Bootstrap, type Company, type CompanySettings, type Role
 export type ThemePref = 'light' | 'dark' | 'system';
 
 interface Data {
+  connections: BankConnection[];
   accounts: BankAccount[];
   categories: Category[];
   transactions: Transaction[];
@@ -61,10 +63,26 @@ interface State extends Data {
   addRule: (rule: Omit<Rule, 'id'>) => void;
   confirmReconciliation: (transactionId: string, commitmentId: string) => void;
   undo: () => void;
+
+  // ───── Lot 2 : opérations, banques, règles ─────
+  acceptSuggestions: (ids: string[]) => void;
+  setNote: (id: string, note: string | null) => void;
+  setBookedAt: (id: string, bookedAt: string | null) => Promise<void>;
+  createTransaction: (input: { accountId: string; bookedAt: string; label: string; amount: number; categoryId?: string | null; note?: string }) => Promise<Transaction>;
+  deleteTransactions: (ids: string[]) => Promise<number>;
+  splitTransaction: (id: string, lines: { amount: number; categoryId: string | null }[]) => Promise<void>;
+  unsplitTransaction: (id: string) => Promise<void>;
+  updateRule: (id: string, patch: Partial<Omit<Rule, 'id'>>) => Promise<void>;
+  deleteRule: (id: string) => Promise<void>;
+  reorderRules: (ids: string[]) => Promise<void>;
+  applyRule: (id: string) => Promise<number>;
+  createRule: (rule: Omit<Rule, 'id'>) => Promise<Rule>;
 }
 
-const emptyData: Data = { accounts: [], categories: [], transactions: [], commitments: [], scenarios: [], budgets: [], rules: [], indicators: [] };
+const emptyData: Data = { connections: [], accounts: [], categories: [], transactions: [], commitments: [], scenarios: [], budgets: [], rules: [], indicators: [] };
 const defaultSettings: CompanySettings = {
+  autoHideRefunds: true,
+  autoHideInternalTransfers: true,
   minCashThreshold: 0,
   forecastMode: 'projection',
   invoicesEnabled: true,
@@ -114,6 +132,7 @@ export const useStore = create<State>()(
             role: b.role,
             settings: b.company.settings,
             today: todayInParis(),
+            connections: b.connections ?? [],
             accounts: b.accounts,
             categories: b.categories,
             transactions: b.transactions,
@@ -176,9 +195,10 @@ export const useStore = create<State>()(
 
         categorize: (ids, categoryId) => {
           snapshot();
-          const idSet = new Set(ids);
+          const idSet = new Set(get().transactions.filter((t) => ids.includes(t.id) && !t.isSplit).map((t) => t.id));
+          if (idSet.size === 0) return [];
           set((s) => ({ transactions: s.transactions.map((t) => (idSet.has(t.id) ? { ...t, categoryId, suggestion: null } : t)) }));
-          sync(api('POST', '/transactions/batch', { ops: ids.map((id) => ({ id, categoryId })) }));
+          sync(api('POST', '/transactions/batch', { ops: [...idSet].map((id) => ({ id, categoryId })) }));
           const s = get();
           const first = s.transactions.find((t) => idSet.has(t.id));
           return first ? findSimilar(first, s.transactions).filter((t) => !idSet.has(t.id)) : [];
@@ -187,8 +207,82 @@ export const useStore = create<State>()(
         setHidden: (ids, hidden) => {
           snapshot();
           const idSet = new Set(ids);
-          set((s) => ({ transactions: s.transactions.map((t) => (idSet.has(t.id) ? { ...t, hidden, suggestion: null } : t)) }));
+          set((s) => ({ transactions: s.transactions.map((t) => (idSet.has(t.id) ? { ...t, hidden, hiddenReason: hidden ? 'manual' : null, suggestion: null } : t)) }));
           sync(api('POST', '/transactions/batch', { ops: ids.map((id) => ({ id, hidden })) }));
+        },
+
+        acceptSuggestions: (ids) => {
+          snapshot();
+          const idSet = new Set(ids);
+          const accepted = get().transactions.filter((t) => idSet.has(t.id) && t.suggestion && !t.isSplit);
+          if (accepted.length === 0) return;
+          const byId = new Map(accepted.map((t) => [t.id, t.suggestion!.categoryId]));
+          set((s) => ({ transactions: s.transactions.map((t) => (byId.has(t.id) ? { ...t, categoryId: byId.get(t.id)!, suggestion: null } : t)) }));
+          sync(api('POST', '/transactions/batch', { ops: accepted.map((t) => ({ id: t.id, acceptSuggestion: true })) }));
+        },
+
+        setNote: (id, note) => {
+          set((s) => ({ transactions: s.transactions.map((t) => (t.id === id ? { ...t, note: note ?? undefined } : t)) }));
+          sync(api('PATCH', `/transactions/${encodeURIComponent(id)}`, { note }));
+        },
+
+        setBookedAt: async (id, bookedAt) => {
+          const updated = await api<Transaction>('PATCH', `/transactions/${encodeURIComponent(id)}`, bookedAt ? { bookedAt } : { resetBookedAt: true });
+          set((s) => ({
+            transactions: s.transactions.map((t) =>
+              t.id === updated.id ? updated : t.parentId === id ? { ...t, bookedAt: updated.bookedAt, originalBookedAt: updated.originalBookedAt } : t,
+            ),
+          }));
+        },
+
+        createTransaction: async (input) => {
+          const created = await api<Transaction>('POST', '/transactions', input);
+          await get().load();
+          return created;
+        },
+
+        deleteTransactions: async (ids) => {
+          const res = await api<{ deleted: number }>('POST', '/transactions/delete', { ids });
+          await get().load();
+          return res.deleted;
+        },
+
+        splitTransaction: async (id, lines) => {
+          const res = await api<{ transactions: Transaction[] }>('POST', `/transactions/${encodeURIComponent(id)}/split`, { lines });
+          set((s) => ({ transactions: [...s.transactions.filter((t) => t.id !== id && t.parentId !== id), ...res.transactions] }));
+        },
+
+        unsplitTransaction: async (id) => {
+          const parent = await api<Transaction>('DELETE', `/transactions/${encodeURIComponent(id)}/split`);
+          set((s) => ({ transactions: [...s.transactions.filter((t) => t.id !== id && t.parentId !== id), parent] }));
+        },
+
+        createRule: async (rule) => {
+          const created = await api<Rule>('POST', '/rules', rule);
+          set((s) => ({ rules: [...s.rules, created].sort((a, b) => b.priority - a.priority) }));
+          return created;
+        },
+
+        updateRule: async (id, patch) => {
+          const updated = await api<Rule>('PATCH', `/rules/${encodeURIComponent(id)}`, patch);
+          set((s) => ({ rules: s.rules.map((r) => (r.id === id ? updated : r)) }));
+        },
+
+        deleteRule: async (id) => {
+          await api('DELETE', `/rules/${encodeURIComponent(id)}`);
+          set((s) => ({ rules: s.rules.filter((r) => r.id !== id) }));
+        },
+
+        reorderRules: async (ids) => {
+          const n = ids.length;
+          set((s) => ({ rules: ids.map((id, i) => ({ ...s.rules.find((r) => r.id === id)!, priority: n - i })) }));
+          await api('PUT', '/rules/order', { ids });
+        },
+
+        applyRule: async (id) => {
+          const res = await api<{ updated: number }>('POST', `/rules/${encodeURIComponent(id)}/apply`, {});
+          if (res.updated) await get().load();
+          return res.updated;
         },
 
         addRule: (rule) => {

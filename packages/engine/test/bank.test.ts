@@ -36,6 +36,10 @@ describe('cleanBankLabel', () => {
     expect(cleanBankLabel('CARTE X8502 04/11 SUMUP *EZ PIEC').label).toBe('Sumup Ez Piec');
     expect(cleanBankLabel('VIR INST RECU M JEAN FRANCOIS ROY SOLDE DEVIS 000171').counterparty).toBe('M Jean Francois Roy');
   });
+  it('écarte les lettres isolées des références de facture', () => {
+    expect(cleanBankLabel('VIR INST RECU SCI LES PINS FACTURE F-2026-000135').label).toBe('SCI Les Pins');
+    expect(cleanBankLabel('VIR INST RECU MME ETTER FACTURE F-2026-000175').label).toBe('Mme Etter');
+  });
   it('garde un libellé lisible quand tout est du bruit', () => {
     expect(cleanBankLabel('CB 04/11 123456').label.length).toBeGreaterThan(0);
   });

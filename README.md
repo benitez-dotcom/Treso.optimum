@@ -2,7 +2,8 @@
 
 Logiciel de pilotage de trésorerie pour TPE/PME, aux couleurs de la charte Optimum.
 Le dépôt contient le **lot 0** (design system), le **lot 1** (API, base de données,
-authentification, sociétés et rôles) et les premiers écrans branchés sur l'API.
+authentification, sociétés et rôles), le **lot 2** (banques, opérations bancaires, import de
+relevés, règles de catégorisation) et les premiers écrans branchés sur l'API.
 
 ## Essayer sans être développeur
 
@@ -29,7 +30,7 @@ les journaux de l'API. Brancher un fournisseur (Brevo, Postmark) en implémentan
 (`apps/api/src/mailer.ts`) avant la production.
 
 ```bash
-pnpm test        # moteur de calcul (34 tests) + API (15 tests d'intégration sur PostgreSQL)
+pnpm test        # moteur de calcul (54 tests) + API (31 tests d'intégration sur PostgreSQL)
 pnpm typecheck
 pnpm build
 ```
@@ -76,6 +77,30 @@ Principales routes (`/api/v1`) : `auth/*`, `me`, `companies`, `companies/current
 - Paramètres : Société (seuil, mode du plan, TVA, factures, suppression), Mon profil
   (thème synchronisé entre appareils), Utilisateurs (invitations, rôles), Journal d'activité.
 - L'interface s'adapte au rôle : un lecteur consulte sans pouvoir modifier.
+
+### Lot 2 : banques et opérations
+
+- **Banques** (Paramètres › Banques) : connexion via l'agrégateur **Bridge** (adaptateur v3 dans
+  `apps/api/src/banking/bridge.ts`, activé par `BRIDGE_CLIENT_ID` et `BRIDGE_CLIENT_SECRET`) ou via
+  la **banque de démonstration** (toujours disponible, 2 comptes et 90 jours d'opérations) ;
+  synchronisation sans doublon, état de la connexion, comptes inclus ou exclus de la trésorerie,
+  solde retenu (solde, comptable, instantané), compte par défaut des factures, comptes manuels
+  (caisse, banque non couverte), limite d'une banque sur l'offre Essentiel.
+- **Opérations bancaires** (`/operations`) : recherche (libellé, tiers, montant exact ou « ~120 »),
+  filtres (comptes, période, sens, état, catégories), catégorisation en place avec proposition
+  « Appliquer aux similaires » et « Créer une règle », détail dans un panneau (date d'imputation,
+  note, exclusion), **division** en parts égales ou en pourcentages (« Reste à répartir » à 0 pour
+  valider), sélection multiple, export CSV, saisie manuelle, suppression des opérations saisies ou importées.
+- **Import de relevés CSV** en 3 étapes (fichier, correspondance des colonnes mémorisée, vérification
+  des erreurs et des doublons), encodage UTF-8 ou Windows ; annulable depuis Paramètres › Imports.
+- **Règles** (Paramètres › Règles) : conditions combinables, aperçu en direct, application
+  automatique ou simple suggestion, ordre de priorité, application aux opérations existantes.
+- **Exclusions automatiques** (réglables dans Paramètres › Société) : remboursements et virements
+  entre les comptes de la société.
+
+> L'adaptateur Bridge suit la documentation publique v3 ; il reste à le valider sur le bac à sable
+> Bridge avec de vrais identifiants. La synchronisation planifiée (4 fois par jour) et les webhooks
+> Bridge viendront avec la mise en production.
 
 ### Moteur de calcul (`packages/engine`)
 

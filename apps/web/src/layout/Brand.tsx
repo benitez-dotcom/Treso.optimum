@@ -7,7 +7,7 @@ import logoBlanc from '../assets/brand/optimum-logo-blanc.svg';
  * comme les déclinaisons « gestion », « formation », « audit » (sous « mum », après le point).
  * `size` = hauteur des minuscules en px.
  */
-export function Logo({ onDark = true, size = 28 }: { onDark?: boolean; size?: number }) {
+export function Logo({ onDark = true, size = 18 }: { onDark?: boolean; size?: number }) {
   // Le fichier fait 2280×539 ; la hauteur d'x vaut ~0,46 de la hauteur totale.
   const height = size / 0.46;
   const width = (height * 2280) / 539;

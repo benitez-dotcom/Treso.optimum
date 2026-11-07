@@ -11,6 +11,8 @@ import { PlanPage } from './pages/PlanPage';
 import { InboxPage } from './pages/InboxPage';
 import { ComingSoon } from './pages/ComingSoon';
 import { SettingsPage } from './pages/SettingsPage';
+import { OperationsPage } from './pages/OperationsPage';
+import { BankCallbackPage } from './pages/settings/BanksTab';
 import { CompaniesPage } from './pages/CompaniesPage';
 import { GuestOnly, RequireAuth, RequireCompany } from './auth/Guards';
 import { ForgotPasswordPage, InvitationPage, LoginPage, MagicLinkPage, ResetPasswordPage, SignupPage, VerifyEmailPage } from './auth/AuthPages';
@@ -48,7 +50,9 @@ const router = createBrowserRouter([
           { index: true, element: <HomePage /> },
           { path: 'a-traiter', element: <InboxPage /> },
           { path: 'plan', element: <PlanPage /> },
+          { path: 'operations', element: <OperationsPage /> },
           { path: 'parametres', element: <SettingsPage /> },
+          { path: 'parametres/banques/retour', element: <BankCallbackPage /> },
           { path: 'societes', element: <CompaniesPage /> },
           { path: '*', element: <ComingSoon /> },
         ],

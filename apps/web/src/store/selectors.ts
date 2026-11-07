@@ -128,7 +128,7 @@ export function useInbox(): InboxItem[] {
     const usedTx = new Set<string>();
 
     for (const t of transactions) {
-      if (t.categoryId || t.hidden) continue;
+      if (t.categoryId || t.hidden || t.isSplit) continue;
       const match = pending.find(
         (c) => Math.abs(c.amountInclTax - Math.abs(t.amount)) < 0.01 && (c.flow === 'in') === t.amount > 0,
       );
@@ -140,7 +140,7 @@ export function useInbox(): InboxItem[] {
 
     const groups = new Map<string, Transaction[]>();
     for (const t of transactions) {
-      if (t.categoryId || t.hidden || usedTx.has(t.id)) continue;
+      if (t.categoryId || t.hidden || t.isSplit || usedTx.has(t.id)) continue;
       const key = `${t.counterparty ?? t.label}|${Math.sign(t.amount)}`;
       groups.set(key, [...(groups.get(key) ?? []), t]);
     }

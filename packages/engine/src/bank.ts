@@ -65,7 +65,11 @@ export function cleanBankLabel(raw: string): CleanLabel {
     .replace(/\s+/g, ' ')
     .replace(/^[-.\s]+|[-.\s]+$/g, '')
     .trim();
-  const words = s.split(' ').filter((w) => /[A-Za-zÀ-ÿ]/.test(w)).slice(0, 4);
+  // Mots porteurs de sens : on écarte les lettres isolées (« F » de « F-2026-… »), sauf la civilité « M » en tête
+  const words = s
+    .split(' ')
+    .filter((w, i) => /[A-Za-zÀ-ÿ]/.test(w) && (w.length > 1 || (i === 0 && /^m$/i.test(w))))
+    .slice(0, 4);
   if (words.length === 0) {
     const fallback = titleCase(raw.replace(/\s+/g, ' ').trim().slice(0, 40));
     return { label: fallback, counterparty: null };

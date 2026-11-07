@@ -81,3 +81,225 @@
   border: 2px solid var(--opt-petrol);
   padding: 19px 23px;
 }
+
+/* Lot 2 : banques, règles */
+.radio-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.switch-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.bank-card {
+  border: 1px solid var(--opt-border);
+  border-radius: var(--opt-radius-card);
+  overflow: hidden;
+}
+
+.bank-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--opt-petrol-50);
+}
+
+.bank-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--opt-petrol);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.bank-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.bank-title > .ant-tag {
+  align-self: flex-start;
+}
+
+.bank-status {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.bank-tools {
+  display: flex;
+  gap: 4px;
+}
+
+.bank-accounts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bank-accounts li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--opt-border);
+  flex-wrap: wrap;
+}
+
+.bank-accounts li.is-off .bank-account-name,
+.bank-accounts li.is-off .num {
+  color: var(--opt-text-muted);
+}
+
+.bank-account-name {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 180px;
+}
+
+.num.negative {
+  color: var(--opt-out);
+}
+
+.bank-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bank-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px dashed var(--opt-border);
+  border-radius: var(--opt-radius-card);
+}
+
+.bank-empty .anticon {
+  font-size: 24px;
+  color: var(--opt-petrol);
+}
+
+.bank-empty p,
+.bank-note {
+  margin: 0;
+}
+
+.rule-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--opt-border);
+  border-radius: var(--opt-radius-card);
+}
+
+.rule-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  flex-wrap: wrap;
+}
+
+.rule-list li + li {
+  border-top: 1px solid var(--opt-border);
+}
+
+.rule-order {
+  display: flex;
+  flex-direction: column;
+}
+
+.rule-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 220px;
+}
+
+.rule-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rule-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rule-editor fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rule-editor legend {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.rule-cond {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rule-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rule-switch {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.rule-preview {
+  background: var(--opt-row-alt);
+  border-radius: var(--opt-radius-control);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rule-preview ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.rule-preview li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}

@@ -4,7 +4,6 @@ import { MotifStrip } from '../layout/Brand';
 
 const names: Record<string, string> = {
   '/journalier': 'Au jour le jour',
-  '/operations': 'Opérations bancaires',
   '/factures/clients': 'Factures clients',
   '/factures/fournisseurs': 'Factures fournisseurs',
   '/analyses': 'Analyses',

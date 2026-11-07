@@ -6,6 +6,9 @@ import { api, ApiError } from '../api/client';
 import { useSession } from '../api/session';
 import { canAdmin, roleOptions, type Member, type PendingInvitation, type Role } from '../api/types';
 import { useStore, type ThemePref } from '../store/useStore';
+import { BanksTab } from './settings/BanksTab';
+import { ImportsTab } from './settings/ImportsTab';
+import { RulesTab } from './settings/RulesTab';
 import './settings.css';
 
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : "L'enregistrement a échoué.");
@@ -71,6 +74,22 @@ function CompanyTab() {
         </Form.Item>
         <Form.Item name="invoicesEnabled" label="Factures engagées" valuePropName="checked" extra="Intégrer vos factures à venir dans la trésorerie prévisionnelle.">
           <Switch onChange={(v) => save({ invoicesEnabled: v })} />
+        </Form.Item>
+        <Form.Item label="Exclusions automatiques" extra="Ces opérations ne faussent plus vos totaux ; vous pouvez toujours les réintégrer une à une.">
+          <div className="radio-stack">
+            <label className="switch-line">
+              <Form.Item name="autoHideRefunds" valuePropName="checked" noStyle>
+                <Switch onChange={(v) => save({ autoHideRefunds: v })} />
+              </Form.Item>
+              Exclure les remboursements (achat puis remboursement du même montant)
+            </label>
+            <label className="switch-line">
+              <Form.Item name="autoHideInternalTransfers" valuePropName="checked" noStyle>
+                <Switch onChange={(v) => save({ autoHideInternalTransfers: v })} />
+              </Form.Item>
+              Exclure les virements entre mes comptes
+            </label>
+          </div>
         </Form.Item>
         <Form.Item label="Estimation de la TVA">
           <div className="inline-row">
@@ -319,6 +338,11 @@ interface AuditEntry {
 }
 
 const entityLabels: Record<string, string> = {
+  bank_connection: 'Connexion bancaire',
+  bank_account: 'Compte',
+  transaction: 'Opération',
+  import: 'Import',
+  rules_order: 'Ordre des règles',
   budgets: 'Budgets',
   scenario: 'Scénario',
   transactions: 'Opérations',
@@ -329,7 +353,16 @@ const entityLabels: Record<string, string> = {
   invitation: 'Invitation',
   commitment: 'Facture',
 };
-const actionLabels: Record<string, string> = { create: 'Création', update: 'Modification', delete: 'Suppression' };
+const actionLabels: Record<string, string> = {
+  create: 'Création',
+  update: 'Modification',
+  delete: 'Suppression',
+  sync: 'Synchronisation',
+  split: 'Division',
+  unsplit: 'Division annulée',
+  import: 'Import',
+  apply: 'Application de règle',
+};
 
 function AuditTab() {
   const [rows, setRows] = useState<AuditEntry[] | null>(null);
@@ -365,6 +398,9 @@ export function SettingsPage() {
           { key: 'societe', label: 'Société', children: <CompanyTab /> },
           { key: 'profil', label: 'Mon profil', children: <ProfileTab /> },
           { key: 'utilisateurs', label: 'Utilisateurs', children: <UsersTab /> },
+          { key: 'banques', label: 'Banques', children: <BanksTab /> },
+          { key: 'regles', label: 'Règles', children: <RulesTab /> },
+          { key: 'imports', label: 'Imports', children: <ImportsTab /> },
           ...(canAdmin(role) ? [{ key: 'journal', label: "Journal d'activité", children: <AuditTab /> }] : []),
         ]}
       />
