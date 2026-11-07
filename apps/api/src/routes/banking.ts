@@ -268,7 +268,8 @@ export function registerBankingRoutes(app: FastifyInstance) {
       await refreshManualBalances(tx);
       await audit(tx, req, 'create', 'bank_account', id, null, body);
       const a = (await tx.query<Row>('SELECT * FROM bank_accounts WHERE id = $1', [id])).rows[0]!;
-      return reply.status(201).send(accountDto(a));
+      reply.status(201);
+      return accountDto(a);
     });
   });
 

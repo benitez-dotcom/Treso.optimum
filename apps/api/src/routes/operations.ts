@@ -45,7 +45,8 @@ export function registerOperationRoutes(app: FastifyInstance) {
       await refreshManualBalances(tx);
       await audit(tx, req, 'create', 'transaction', id!, null, body);
       const t = (await tx.query<Row>('SELECT * FROM transactions WHERE id = $1', [id])).rows[0]!;
-      return reply.status(201).send(toTransaction(t));
+      reply.status(201);
+      return toTransaction(t);
     });
   });
 
@@ -272,7 +273,8 @@ export function registerOperationRoutes(app: FastifyInstance) {
       }
       await refreshManualBalances(tx);
       await audit(tx, req, 'import', 'transactions', importId, null, { fileName: body.fileName, rows: created.length });
-      return reply.status(201).send({ importId, imported: created.length });
+      reply.status(201);
+      return { importId, imported: created.length };
     });
   });
 
